@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Farben für den Dark-Modus (wird automatisch genutzt, wenn das Handy dunkel eingestellt ist) -->
+<resources>
+    <color name="primary">#4A86D8</color>
+    <color name="primary_dark">#8AB4F8</color>
+    <color name="bg">#111418</color>
+    <color name="card">#1D2127</color>
+    <color name="text">#E6E9ED</color>
+    <color name="text_secondary">#9AA4B1</color>
+    <color name="ok">#66BB6A</color>
+    <color name="warn">#FFB74D</color>
+    <color name="danger">#EF5350</color>
+</resources>

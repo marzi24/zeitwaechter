@@ -164,6 +164,7 @@ Genaue Anleitungen pro Modell findest du auf <https://dontkillmyapp.com>.
 - **Nur vorbeigefahren / kein Arbeitstag:** In der Benachrichtigung **„Kein Arbeitstag“** tippen.
 - **Erkennung hat nicht geklappt:** **„Jetzt eingestempelt“** oder **„Startzeit festlegen“** tippen.
 - **Früher ausgestempelt:** In der Benachrichtigung **„Ausgestempelt“** tippen, dann kommen keine Warnungen mehr.
+- **Dark-Modus:** Die App folgt automatisch der Handy-Einstellung (Einstellungen → Display → Dunkles Design).
 - **Verlauf:** Unten in der App, mit geschätzter Netto-Zeit (nach § 4 ArbZG: über 6 h → 30 Min.,
   über 9 h → 45 Min. Pause abgezogen). Mit **„Als CSV teilen“** kannst du ihn dir z. B. per Mail schicken
   und in Excel öffnen.
