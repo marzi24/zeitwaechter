@@ -6,6 +6,10 @@ on:
   push:
   workflow_dispatch:
 
+# Erlaubt dem Bauauftrag, das Release "Neueste Version" anzulegen
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -32,3 +36,18 @@ jobs:
         with:
           name: Zeitwaechter-APK
           path: app/build/outputs/apk/debug/app-debug.apk
+
+      # Legt die APK als Release "Neueste Version" ab – direkt vom Handy herunterladbar:
+      # https://github.com/<dein-name>/zeitwaechter/releases/latest
+      - name: Als Release "Neueste Version" veröffentlichen
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp app/build/outputs/apk/debug/app-debug.apk Zeitwaechter.apk
+          gh release delete neueste --yes --cleanup-tag || true
+          gh release create neueste Zeitwaechter.apk \
+            --target "${GITHUB_SHA}" \
+            --title "Zeitwächter – neueste Version" \
+            --notes "Automatisch gebaut aus Commit ${GITHUB_SHA::7}. Auf dem Handy Zeitwaechter.apk antippen und installieren." \
+            --latest
