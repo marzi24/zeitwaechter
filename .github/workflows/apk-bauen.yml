@@ -44,10 +44,12 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          cp app/build/outputs/apk/debug/app-debug.apk Zeitwaechter.apk
+          VERSION=$(grep -oP "versionName = '\K[^']+" app/build.gradle)
+          FILE="Zeitwaechter-${VERSION}.apk"
+          cp app/build/outputs/apk/debug/app-debug.apk "$FILE"
           gh release delete neueste --yes --cleanup-tag || true
-          gh release create neueste Zeitwaechter.apk \
+          gh release create neueste "$FILE" \
             --target "${GITHUB_SHA}" \
-            --title "Zeitwächter – neueste Version" \
-            --notes "Automatisch gebaut aus Commit ${GITHUB_SHA::7}. Auf dem Handy Zeitwaechter.apk antippen und installieren." \
+            --title "Zeitwächter ${VERSION}" \
+            --notes "Version ${VERSION}, automatisch gebaut aus Commit ${GITHUB_SHA::7}. Auf dem Handy ${FILE} antippen und über die installierte Version drüber installieren." \
             --latest

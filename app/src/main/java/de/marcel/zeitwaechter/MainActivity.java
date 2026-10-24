@@ -95,6 +95,7 @@ public class MainActivity extends Activity {
 
         fillSettingsFields();
         fillLocationFields();
+        showVersion();
 
         // ---- Heute ----
         btnStart.setOnClickListener(v -> {
@@ -168,6 +169,17 @@ public class MainActivity extends Activity {
         findViewById(R.id.btnDeleteLast).setOnClickListener(v -> deleteLastEntry());
 
         handleIntent(getIntent());
+    }
+
+    /** Zeigt die installierte Version an, z. B. "Version 1.2.1". */
+    private void showVersion() {
+        TextView tv = findViewById(R.id.tvVersion);
+        try {
+            String name = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
+            tv.setText("Version " + name);
+        } catch (PackageManager.NameNotFoundException e) {
+            tv.setText("");
+        }
     }
 
     @Override
