@@ -10,13 +10,28 @@ android {
         applicationId = 'de.marcel.zeitwaechter'
         minSdk = 26
         targetSdk = 35
-        versionCode = 2
-        versionName = '1.1'
+        versionCode = 3
+        versionName = '1.1.1'
+    }
+
+    // Fester Schlüssel: Jeder Bau wird gleich unterschrieben, damit Updates
+    // über die installierte Version drüber installiert werden können.
+    signingConfigs {
+        fest {
+            storeFile = file('zeitwaechter.keystore')
+            storePassword = 'zeitwaechter'
+            keyAlias = 'zeitwaechter'
+            keyPassword = 'zeitwaechter'
+        }
     }
 
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.fest
+        }
         release {
             minifyEnabled = false
+            signingConfig = signingConfigs.fest
         }
     }
 
