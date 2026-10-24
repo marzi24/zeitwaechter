@@ -116,9 +116,12 @@ GitHub hat Rechner, die die App für dich bauen. Das ist kostenlos.
 - Am einfachsten: Stell dich **auf den Parkplatz bei der Arbeit** und tippe
   **„Aktuellen Standort als Arbeitsort speichern“**.
 - Oder von zu Hause: In Google Maps lange auf deinen Parkplatz drücken → oben erscheinen Zahlen wie
-  `48.49123, 9.20432` → kopieren → in das Feld **„Breitengrad“** einfügen → **„Speichern“**.
-  Die App teilt die beiden Zahlen automatisch auf.
-- Mit **„Ort in Karte prüfen“** kontrollierst du, ob der Punkt stimmt.
+  `48.49123, 9.20432` → **antippen** (damit sind sie kopiert) → in der App auf
+  **„📋 Aus Zwischenablage einfügen“** tippen. Fertig, der Ort ist sofort gespeichert.
+  Ein kopierter Google-Maps-Link aus dem Browser funktioniert auch, Kurz-Links (maps.app.goo.gl) aber nicht.
+- Von Hand eintippen geht natürlich auch: Zahlen in die beiden Felder schreiben und auf
+  **„✔ Arbeitsort übernehmen“** tippen (oder auf der Tastatur auf „Fertig“).
+- Mit **„In Karte prüfen“** kontrollierst du, ob der Punkt stimmt.
 
 **Einstellungen** (Standardwerte passen meist):
 

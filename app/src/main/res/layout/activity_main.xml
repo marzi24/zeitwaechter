@@ -171,6 +171,11 @@
                 style="@style/BtnWide"
                 android:text="Aktuellen Standort als Arbeitsort speichern" />
 
+            <Button
+                android:id="@+id/btnPasteLocation"
+                style="@style/BtnWide"
+                android:text="📋 Aus Zwischenablage einfügen (Google Maps)" />
+
             <TextView
                 style="@style/Label"
                 android:text="Breitengrad (oder „48.49, 9.21“ einfügen)" />
@@ -179,6 +184,7 @@
                 android:id="@+id/etLat"
                 style="@style/Field"
                 android:hint="z. B. 48.491234"
+                android:imeOptions="actionNext"
                 android:inputType="text" />
 
             <TextView
@@ -189,12 +195,29 @@
                 android:id="@+id/etLon"
                 style="@style/Field"
                 android:hint="z. B. 9.204321"
+                android:imeOptions="actionDone"
                 android:inputType="numberDecimal|numberSigned" />
 
-            <Button
-                android:id="@+id/btnOpenMap"
-                style="@style/BtnWide"
-                android:text="Ort in Karte prüfen" />
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/btnOpenMap"
+                    style="@style/Btn"
+                    android:layout_marginEnd="6dp"
+                    android:text="In Karte prüfen" />
+
+                <Button
+                    android:id="@+id/btnSaveLocation"
+                    style="@style/Btn"
+                    android:layout_marginStart="6dp"
+                    android:backgroundTint="@color/primary"
+                    android:textColor="#FFFFFF"
+                    android:text="✔ Arbeitsort übernehmen" />
+            </LinearLayout>
         </LinearLayout>
 
         <!-- ============ EINSTELLUNGEN ============ -->

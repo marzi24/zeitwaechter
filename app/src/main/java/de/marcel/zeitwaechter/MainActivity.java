@@ -7,6 +7,8 @@ import android.app.AlertDialog;
 import android.app.NotificationManager;
 import android.app.TimePickerDialog;
 import android.content.ActivityNotFoundException;
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
@@ -16,6 +18,8 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.PowerManager;
 import android.provider.Settings;
+import android.view.inputmethod.EditorInfo;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Switch;
@@ -32,6 +36,8 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /** Der einzige Bildschirm der App. */
 public class MainActivity extends Activity {
@@ -144,6 +150,16 @@ public class MainActivity extends Activity {
                 .show());
 
         findViewById(R.id.btnOpenMap).setOnClickListener(v -> openMap());
+        findViewById(R.id.btnSaveLocation).setOnClickListener(v -> saveLocationOnly());
+        findViewById(R.id.btnPasteLocation).setOnClickListener(v -> pasteLocation());
+        // "Fertig"-Taste der Tastatur im Längengrad-Feld speichert direkt
+        etLon.setOnEditorActionListener((v, actionId, event) -> {
+            if (actionId == EditorInfo.IME_ACTION_DONE) {
+                saveLocationOnly();
+                return true;
+            }
+            return false;
+        });
 
         // ---- Einstellungen & Verlauf ----
         findViewById(R.id.btnSave).setOnClickListener(v -> saveSettings());
@@ -455,24 +471,107 @@ public class MainActivity extends Activity {
         etResume.setText(String.valueOf(Prefs.resumeMin(this)));
     }
 
+    /**
+     * Liest die beiden Koordinaten-Felder. Erlaubt auch "48.49, 9.21" komplett im ersten Feld.
+     * Gibt null zurück, wenn beide Felder leer sind; wirft bei ungültigen Werten.
+     */
+    private double[] readCoordFields() {
+        String latS = etLat.getText().toString().trim();
+        String lonS = etLon.getText().toString().trim();
+        double[] pair = findCoordinates(latS);
+        if (pair != null) return pair;
+        if (latS.isEmpty() && lonS.isEmpty()) return null;
+        double lat = parseDouble(latS, "Breitengrad");
+        double lon = parseDouble(lonS, "Längengrad");
+        if (lat < -90 || lat > 90) throw new IllegalArgumentException("Breitengrad muss zwischen -90 und 90 liegen.");
+        if (lon < -180 || lon > 180) throw new IllegalArgumentException("Längengrad muss zwischen -180 und 180 liegen.");
+        return new double[]{lat, lon};
+    }
+
+    /**
+     * Sucht Koordinaten in einem Text, z. B.
+     *  "48.491234, 9.204321"  (Google Maps: lange drücken → Koordinaten kopieren)
+     *  "https://www.google.com/maps/place/.../@48.4912,9.2043,17z/data=...!3d48.4913!4d9.2044"
+     * Gibt null zurück, wenn nichts Passendes gefunden wurde.
+     */
+    static double[] findCoordinates(String text) {
+        if (text == null) return null;
+        // Genaueste Angabe in langen Google-Maps-Links: !3d<Breite>!4d<Länge>
+        Matcher m = Pattern.compile("!3d(-?\\d{1,2}\\.\\d+)!4d(-?\\d{1,3}\\.\\d+)").matcher(text);
+        if (!m.find()) {
+            // Sonst: zwei Dezimalzahlen mit Punkt, getrennt durch Komma/Leerzeichen (auch "@48.49,9.21")
+            m = Pattern.compile("(-?\\d{1,2}\\.\\d{3,})\\s*[,;]?\\s*(-?\\d{1,3}\\.\\d{3,})").matcher(text);
+            if (!m.find()) return null;
+        }
+        double lat = Double.parseDouble(m.group(1));
+        double lon = Double.parseDouble(m.group(2));
+        if (lat < -90 || lat > 90 || lon < -180 || lon > 180) return null;
+        return new double[]{lat, lon};
+    }
+
+    /** Knopf "Arbeitsort übernehmen": nur den Ort speichern und die Erkennung neu einrichten. */
+    private void saveLocationOnly() {
+        double[] c;
+        try {
+            c = readCoordFields();
+        } catch (IllegalArgumentException e) {
+            toast(e.getMessage());
+            return;
+        }
+        if (c == null) {
+            toast("Bitte Koordinaten eingeben oder einfügen.");
+            return;
+        }
+        applyLocation(c[0], c[1]);
+    }
+
+    /** Knopf "Aus Zwischenablage einfügen". */
+    private void pasteLocation() {
+        ClipboardManager cm = getSystemService(ClipboardManager.class);
+        String text = null;
+        if (cm != null && cm.hasPrimaryClip()) {
+            ClipData clip = cm.getPrimaryClip();
+            if (clip != null && clip.getItemCount() > 0) {
+                CharSequence cs = clip.getItemAt(0).coerceToText(this);
+                if (cs != null) text = cs.toString();
+            }
+        }
+        if (text == null || text.trim().isEmpty()) {
+            toast("Zwischenablage ist leer. In Google Maps lange auf den Ort drücken und die Koordinaten antippen (kopiert sie).");
+            return;
+        }
+        double[] c = findCoordinates(text);
+        if (c == null) {
+            toast("Keine Koordinaten gefunden. Tipp: In Google Maps lange auf den Ort drücken, oben die Zahlen wie „48.49123, 9.20432“ antippen – dann sind sie kopiert. Kurz-Links (maps.app.goo.gl) enthalten keine Koordinaten.");
+            return;
+        }
+        applyLocation(c[0], c[1]);
+    }
+
+    /** Speichert den Arbeitsort, richtet die Erkennung ein und zeigt das Ergebnis. */
+    private void applyLocation(double lat, double lon) {
+        Prefs.setWorkLocation(this, lat, lon);
+        fillLocationFields();
+        hideKeyboard();
+        etLat.clearFocus();
+        etLon.clearFocus();
+        GeofenceHelper.register(this);
+        toast(String.format(Locale.US, "Arbeitsort übernommen ✔  (%.5f, %.5f)", lat, lon));
+        refreshAll();
+        handler.postDelayed(this::refreshAll, 1500);
+    }
+
+    private void hideKeyboard() {
+        InputMethodManager imm = getSystemService(InputMethodManager.class);
+        if (imm != null) imm.hideSoftInputFromWindow(etLon.getWindowToken(), 0);
+    }
+
     private void saveSettings() {
         try {
-            // Koordinaten: entweder zwei Felder oder "48.49, 9.21" ins erste Feld eingefügt
-            String latS = etLat.getText().toString().trim();
-            String lonS = etLon.getText().toString().trim();
-            if (latS.matches("-?\\d+\\.\\d+\\s*,\\s*-?\\d+\\.\\d+")) {
-                String[] p = latS.split(",");
-                latS = p[0].trim();
-                lonS = p[1].trim();
-            }
-            boolean hasCoords = !latS.isEmpty() || !lonS.isEmpty();
-            double lat = 0, lon = 0;
-            if (hasCoords) {
-                lat = parseDouble(latS, "Breitengrad");
-                lon = parseDouble(lonS, "Längengrad");
-                if (lat < -90 || lat > 90) throw new IllegalArgumentException("Breitengrad muss zwischen -90 und 90 liegen.");
-                if (lon < -180 || lon > 180) throw new IllegalArgumentException("Längengrad muss zwischen -180 und 180 liegen.");
-            }
+            double[] coords = readCoordFields(); // null = Felder leer
+            boolean hasCoords = coords != null;
+            double lat = hasCoords ? coords[0] : 0;
+            double lon = hasCoords ? coords[1] : 0;
 
             int radius = parseInt(etRadius, "Radius", 50, 2000);
             int offset = parseInt(etOffset, "Minuten bis zur Stempeluhr", 0, 30);
