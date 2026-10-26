@@ -162,15 +162,58 @@ Genaue Anleitungen pro Modell findest du auf <https://dontkillmyapp.com>.
   direkt die Uhrzeitauswahl. In der App geht es über den blauen Knopf **„Start 06:30 ändern“**
   oder für kleine Abweichungen über **−1 Min / +1 Min**. Die Warnungen werden sofort neu berechnet.
   Ab dann rechnet die App mit der exakten Zeit der Stempeluhr.
-- **Nachträglich korrigieren:** Im Verlauf **„Letzten Eintrag bearbeiten“** → „Beginn“ oder „Ende“
-  wählen und die Zeit laut Stempeluhr eintragen. Funktioniert auch bei Nachtdiensten.
+- **Nachträglich korrigieren:** Im Reiter **„Arbeitszeit“** die Zeile antippen und Kommen, Gehen oder
+  Pause laut Stempeluhr ändern. Funktioniert auch bei Nachtdiensten.
+- **Zweimal am Tag arbeiten:** Z. B. bis 16:00 gearbeitet und abends um 20:00 nochmal: einfach wieder
+  einstempeln (automatisch per Standort oder mit **„Erneut einstempeln“**). Die App rechnet die
+  früheren Einsätze desselben Arbeitstags auf die 10-h-Grenze an, und die Zeit dazwischen zählt als Pause.
+  Beispiel: 06:30–16:00 = 9:00 h netto → um 20:00 eingestempelt → **spätestens 21:00 raus**.
+  Als „selber Arbeitstag“ gilt alles, solange dazwischen keine 11 Stunden Ruhezeit lagen.
 - **Nur vorbeigefahren / kein Arbeitstag:** In der Benachrichtigung **„Kein Arbeitstag“** tippen.
 - **Erkennung hat nicht geklappt:** **„Jetzt eingestempelt“** oder **„Startzeit festlegen“** tippen.
 - **Früher ausgestempelt:** In der Benachrichtigung **„Ausgestempelt“** tippen, dann kommen keine Warnungen mehr.
 - **Dark-Modus:** Die App folgt automatisch der Handy-Einstellung (Einstellungen → Display → Dunkles Design).
-- **Verlauf:** Unten in der App, mit geschätzter Netto-Zeit (nach § 4 ArbZG: über 6 h → 30 Min.,
-  über 9 h → 45 Min. Pause abgezogen). Mit **„Als CSV teilen“** kannst du ihn dir z. B. per Mail schicken
-  und in Excel öffnen.
+
+### Reiter „Arbeitszeit“: Tabelle und Überstunden
+
+**Einmalig einrichten** (unten im Reiter, „Einstellungen Überstunden“):
+
+| Feld | Bedeutung |
+|---|---|
+| Sollarbeitszeit pro Arbeitstag | z. B. 38,5 h/Woche ÷ 5 Tage = **7,7** |
+| Übertrag / Startsaldo | Dein aktueller Überstundenstand laut Arbeitgeber, z. B. **35** (auch negativ möglich) |
+| Auszahlung ab | **40** – alles darüber wird ausgezahlt |
+| Stundenlohn brutto | z. B. **25,50** |
+| Zuschlag | Prozent-Zuschlag auf Überstunden, falls es einen gibt, sonst **0** |
+
+**Die Tabelle** zeigt pro Monat (mit ◀ ▶ blättern):
+
+| Spalte | Bedeutung |
+|---|---|
+| Datum | Arbeitstag (bei zwei Einsätzen am Tag stehen zwei Zeilen untereinander) |
+| Zeit | Kommen–Gehen, ⁺¹ = Ende am nächsten Tag |
+| Pause | Mit * = automatisch (über 6 h → 30 Min., über 9 h → 45 Min.), ohne * = von dir eingetragen |
+| Netto | Arbeitszeit ohne Pause |
+| +/− | Überstunden des Tages (Netto − Soll), grün = Plus, rot = Minus |
+
+- **Zeile antippen** → Kommen, Gehen, Pause ändern oder Eintrag löschen.
+- **„+ Eintrag“** → vergessenen Arbeitstag nachtragen.
+- **„+ Freier Tag (Abbau)“** → Tag, an dem du Überstunden abfeierst. Zählt die Sollzeit als Minus.
+- Tage **ohne** Eintrag (frei laut Dienstplan, Urlaub, krank) zählen weder Soll noch Ist.
+
+**Überstundenkonto** = Übertrag + alle Tages-Plus/Minus − verbuchte Auszahlungen.
+Liegt das Konto über 40 h, steht darunter, wie viel ausgezahlt wird:
+
+```
+Beispiel: Konto 47:30 h  →  über 40 h: 7:30 h = 7,50 h
+          7,50 h × 25,00 € = 187,50 € brutto
+```
+
+Wenn die Stunden tatsächlich ausgezahlt wurden: **„Auszahlung verbuchen“** tippen. Dann werden sie
+vom Konto abgezogen und es steht wieder auf 40 h. Ein Versehen machst du mit „Letzte Buchung löschen“
+rückgängig. Die Beträge sind **brutto**, vor Steuern und Sozialabgaben.
+
+Mit **„Alle Einträge als CSV teilen“** schickst du dir alles z. B. per Mail und öffnest es in Excel.
 
 ---
 
@@ -206,7 +249,9 @@ Zeitwaechter/
 ├─ app/src/main/
 │  ├─ AndroidManifest.xml       Berechtigungen und Bausteine der App
 │  ├─ java/de/marcel/zeitwaechter/
-│  │  ├─ MainActivity.java      Der Bildschirm (Knöpfe, Anzeige, Einstellungen)
+│  │  ├─ MainActivity.java      Der Bildschirm mit Reiter „Heute“ (Knöpfe, Anzeige, Einstellungen)
+│  │  ├─ OvertimeTab.java       Reiter „Arbeitszeit“: Tabelle, Überstundenkonto, Auszahlung
+│  │  ├─ Work.java              Rechnungen: Tagesgrenze über mehrere Einsätze, Überstunden
 │  │  ├─ SessionManager.java    Die Logik: Start, Ende, Grenze berechnen, Warnungen planen
 │  │  ├─ GeofenceHelper.java    Richtet den Kreis um den Arbeitsort ein
 │  │  ├─ GeofenceReceiver.java  Wird beim Betreten/Verlassen aufgerufen

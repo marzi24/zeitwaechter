@@ -57,6 +57,33 @@ final class Fmt {
         return String.format(Locale.GERMANY, "%d:%02d h", min / 60, min % 60);
     }
 
+    /** Dauer ohne " h", z. B. "9:09" (für Tabellen). */
+    static String hm(long ms) {
+        long min = Math.max(0, ms) / 60_000L;
+        return String.format(Locale.GERMANY, "%d:%02d", min / 60, min % 60);
+    }
+
+    /** Dauer mit Vorzeichen, z. B. "+1:30" oder "−0:45". */
+    static String signed(long ms) {
+        long min = Math.round(ms / 60_000.0);
+        String sign = min > 0 ? "+" : (min < 0 ? "−" : "±");
+        long a = Math.abs(min);
+        return String.format(Locale.GERMANY, "%s%d:%02d", sign, a / 60, a % 60);
+    }
+
+    /** Betrag in Euro, z. B. "1.234,50 €". */
+    static String euro(double value) {
+        return String.format(Locale.GERMANY, "%,.2f €", value);
+    }
+
+    /** Minuten als Dezimalstunden zum Eintippen, z. B. 462 -> "7,7", -90 -> "-1,5". */
+    static String hoursInput(int minutes) {
+        String s = String.format(Locale.GERMANY, "%.2f", minutes / 60.0);
+        while (s.endsWith("0")) s = s.substring(0, s.length() - 1);
+        if (s.endsWith(",")) s = s.substring(0, s.length() - 1);
+        return s;
+    }
+
     /** Dauer als "3 Std. 12 Min." */
     static String durationWords(long ms) {
         long min = Math.max(0, ms) / 60_000L;

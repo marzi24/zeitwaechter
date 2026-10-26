@@ -27,9 +27,25 @@ public final class SessionManager {
     private static final int ALARM_BASE = 100;
     private static final int MAX_ALARMS = 12;
 
-    /** Späteste Ausstempelzeit für einen Einstempel-Zeitpunkt. */
+    /**
+     * Späteste Ausstempelzeit für einen Einstempel-Zeitpunkt.
+     * Frühere Einsätze am selben Arbeitstag werden angerechnet (siehe {@link Work#dayInfo}).
+     */
     public static long deadline(Context c, long start) {
-        return start + (long) (Prefs.maxWorkMin(c) + Prefs.breakMin(c)) * 60_000L;
+        return dayInfo(c, start).deadline;
+    }
+
+    /** Tagesberechnung (frühere Einsätze, Restzeit, Pause) für einen Einsatz ab {@code start}. */
+    public static Work.DayInfo dayInfo(Context c, long start) {
+        return Work.dayInfo(Prefs.history(c), start, Prefs.maxWorkMin(c), Prefs.breakMin(c));
+    }
+
+    /** Nach Änderungen am Verlauf: Warnungen und Anzeige der laufenden Sitzung neu berechnen. */
+    public static void historyChanged(Context c) {
+        if (Prefs.active(c)) {
+            scheduleAlarms(c);
+            Notifier.showStatus(c);
+        }
     }
 
     // ---------------- Ereignisse von der Ortserkennung ----------------

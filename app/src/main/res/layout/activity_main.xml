@@ -1,350 +1,594 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/bg"
-    android:fitsSystemWindows="true">
+    android:fitsSystemWindows="true"
+    android:orientation="vertical">
 
+    <!-- ============ KOPF ============ -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="16dp">
+        android:paddingStart="16dp"
+        android:paddingTop="12dp"
+        android:paddingEnd="16dp">
 
-        <TextView
-            android:layout_width="wrap_content"
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="@string/app_name"
-            android:textColor="@color/primary_dark"
-            android:textSize="28sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Erinnert dich rechtzeitig vor der Höchstarbeitszeit ans Ausstempeln."
-            android:textColor="@color/text_secondary"
-            android:textSize="14sp" />
-
-        <TextView
-            android:id="@+id/tvVersion"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="12dp"
-            android:textColor="@color/text_secondary"
-            android:textSize="12sp" />
-
-        <!-- ============ HEUTE ============ -->
-        <LinearLayout style="@style/Section">
+            android:gravity="bottom"
+            android:orientation="horizontal">
 
             <TextView
-                style="@style/SectionTitle"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/app_name"
+                android:textColor="@color/primary_dark"
+                android:textSize="26sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvVersion"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="4dp"
+                android:textColor="@color/text_secondary"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <!-- Reiter -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:layout_marginBottom="10dp"
+            android:background="@drawable/section_bg"
+            android:orientation="horizontal"
+            android:padding="4dp">
+
+            <TextView
+                android:id="@+id/tabHeute"
+                style="@style/Tab"
                 android:text="Heute" />
 
             <TextView
-                android:id="@+id/tvStatus"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:textColor="@color/text"
-                android:textSize="16sp" />
-
-            <TextView
-                android:id="@+id/tvDeadline"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:textColor="@color/text"
-                android:textSize="22sp"
-                android:textStyle="bold" />
-
-            <TextView
-                android:id="@+id/tvRemaining"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:textSize="18sp"
-                android:textStyle="bold" />
-
-            <TextView
-                android:id="@+id/tvWorked"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:textColor="@color/text_secondary"
-                android:textSize="14sp" />
-
-            <!-- Startzeit mit der Stempeluhr abgleichen -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:orientation="horizontal">
-
-                <Button
-                    android:id="@+id/btnMinus"
-                    style="@style/Btn"
-                    android:layout_weight="0.7"
-                    android:layout_marginEnd="6dp"
-                    android:text="−1 Min" />
-
-                <Button
-                    android:id="@+id/btnEditStart"
-                    style="@style/Btn"
-                    android:layout_weight="1.6"
-                    android:backgroundTint="@color/primary"
-                    android:textColor="#FFFFFF"
-                    android:text="Startzeit festlegen" />
-
-                <Button
-                    android:id="@+id/btnPlus"
-                    style="@style/Btn"
-                    android:layout_weight="0.7"
-                    android:layout_marginStart="6dp"
-                    android:text="+1 Min" />
-            </LinearLayout>
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal">
-
-                <Button
-                    android:id="@+id/btnStart"
-                    style="@style/Btn"
-                    android:layout_marginEnd="6dp"
-                    android:text="Jetzt eingestempelt" />
-
-                <Button
-                    android:id="@+id/btnEnd"
-                    style="@style/Btn"
-                    android:layout_marginStart="6dp"
-                    android:text="Ausgestempelt" />
-            </LinearLayout>
-
-            <Button
-                android:id="@+id/btnDiscard"
-                style="@style/BtnWide"
-                android:layout_marginTop="0dp"
-                android:text="Verwerfen (kein Arbeitstag)" />
+                android:id="@+id/tabZeit"
+                style="@style/Tab"
+                android:text="Arbeitszeit" />
         </LinearLayout>
-
-        <!-- ============ BERECHTIGUNGEN ============ -->
-        <LinearLayout style="@style/Section">
-
-            <TextView
-                style="@style/SectionTitle"
-                android:text="Einrichtung (einmalig)" />
-
-            <TextView
-                android:id="@+id/tvPerms"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:lineSpacingExtra="4dp"
-                android:textColor="@color/text"
-                android:textSize="15sp" />
-
-            <Button
-                android:id="@+id/btnPermLocation"
-                style="@style/BtnWide"
-                android:text="1. Standort &amp; Benachrichtigungen erlauben" />
-
-            <Button
-                android:id="@+id/btnPermBackground"
-                style="@style/BtnWide"
-                android:text="2. Standort „Immer zulassen“" />
-
-            <Button
-                android:id="@+id/btnPermBattery"
-                style="@style/BtnWide"
-                android:text="3. Akku-Optimierung &amp; Wecker" />
-        </LinearLayout>
-
-        <!-- ============ ARBEITSORT ============ -->
-        <LinearLayout style="@style/Section">
-
-            <TextView
-                style="@style/SectionTitle"
-                android:text="Arbeitsort" />
-
-            <TextView
-                android:id="@+id/tvGeofence"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="8dp"
-                android:textColor="@color/text_secondary"
-                android:textSize="14sp" />
-
-            <Button
-                android:id="@+id/btnUseCurrent"
-                style="@style/BtnWide"
-                android:text="Aktuellen Standort als Arbeitsort speichern" />
-
-            <Button
-                android:id="@+id/btnPasteLocation"
-                style="@style/BtnWide"
-                android:text="📋 Aus Zwischenablage einfügen (Google Maps)" />
-
-            <TextView
-                style="@style/Label"
-                android:text="Breitengrad (oder „48.49, 9.21“ einfügen)" />
-
-            <EditText
-                android:id="@+id/etLat"
-                style="@style/Field"
-                android:hint="z. B. 48.491234"
-                android:imeOptions="actionNext"
-                android:inputType="text" />
-
-            <TextView
-                style="@style/Label"
-                android:text="Längengrad" />
-
-            <EditText
-                android:id="@+id/etLon"
-                style="@style/Field"
-                android:hint="z. B. 9.204321"
-                android:imeOptions="actionDone"
-                android:inputType="numberDecimal|numberSigned" />
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:orientation="horizontal">
-
-                <Button
-                    android:id="@+id/btnOpenMap"
-                    style="@style/Btn"
-                    android:layout_marginEnd="6dp"
-                    android:text="In Karte prüfen" />
-
-                <Button
-                    android:id="@+id/btnSaveLocation"
-                    style="@style/Btn"
-                    android:layout_marginStart="6dp"
-                    android:backgroundTint="@color/primary"
-                    android:textColor="#FFFFFF"
-                    android:text="✔ Arbeitsort übernehmen" />
-            </LinearLayout>
-        </LinearLayout>
-
-        <!-- ============ EINSTELLUNGEN ============ -->
-        <LinearLayout style="@style/Section">
-
-            <TextView
-                style="@style/SectionTitle"
-                android:text="Einstellungen" />
-
-            <Switch
-                android:id="@+id/swEnabled"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="8dp"
-                android:text="Automatisch erkennen (Kommen &amp; Gehen)"
-                android:textColor="@color/text"
-                android:textSize="15sp" />
-
-            <TextView
-                style="@style/Label"
-                android:text="Radius um den Arbeitsort (Meter, 100–300 empfohlen)" />
-
-            <EditText
-                android:id="@+id/etRadius"
-                style="@style/Field"
-                android:inputType="number" />
-
-            <TextView
-                style="@style/Label"
-                android:text="Minuten vom Ankommen bis zur Stempeluhr" />
-
-            <EditText
-                android:id="@+id/etOffset"
-                style="@style/Field"
-                android:inputType="number" />
-
-            <TextView
-                style="@style/Label"
-                android:text="Höchstarbeitszeit (Stunden, ohne Pause)" />
-
-            <EditText
-                android:id="@+id/etMaxHours"
-                style="@style/Field"
-                android:inputType="numberDecimal" />
-
-            <TextView
-                style="@style/Label"
-                android:text="Pause, die dazugerechnet wird (Minuten)" />
-
-            <EditText
-                android:id="@+id/etBreak"
-                style="@style/Field"
-                android:inputType="number" />
-
-            <TextView
-                style="@style/Label"
-                android:text="Warnungen (Minuten vorher, mit Komma getrennt)" />
-
-            <EditText
-                android:id="@+id/etWarn"
-                style="@style/Field"
-                android:inputType="text" />
-
-            <TextView
-                style="@style/Label"
-                android:text="Kurz weg? Sitzung fortsetzen, wenn zurück innerhalb von (Minuten)" />
-
-            <EditText
-                android:id="@+id/etResume"
-                style="@style/Field"
-                android:inputType="number" />
-
-            <Button
-                android:id="@+id/btnSave"
-                style="@style/BtnWide"
-                android:backgroundTint="@color/primary"
-                android:text="Speichern"
-                android:textColor="#FFFFFF" />
-        </LinearLayout>
-
-        <!-- ============ VERLAUF ============ -->
-        <LinearLayout style="@style/Section">
-
-            <TextView
-                style="@style/SectionTitle"
-                android:text="Verlauf (geschätzte Zeiten)" />
-
-            <TextView
-                android:id="@+id/tvHistory"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:fontFamily="monospace"
-                android:lineSpacingExtra="3dp"
-                android:textColor="@color/text"
-                android:textIsSelectable="true"
-                android:textSize="13sp" />
-
-            <Button
-                android:id="@+id/btnExport"
-                style="@style/BtnWide"
-                android:text="Verlauf als CSV teilen" />
-
-            <Button
-                android:id="@+id/btnEditLast"
-                style="@style/BtnWide"
-                android:text="Letzten Eintrag bearbeiten (Beginn / Ende)" />
-
-            <Button
-                android:id="@+id/btnDeleteLast"
-                style="@style/BtnWide"
-                android:text="Letzten Eintrag löschen" />
-        </LinearLayout>
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:layout_marginBottom="24dp"
-            android:text="Hinweis: Die App ist nur eine Erinnerungshilfe. Maßgeblich ist immer die Zeit an der Stempeluhr. Alle Daten bleiben auf diesem Handy."
-            android:textColor="@color/text_secondary"
-            android:textSize="12sp" />
     </LinearLayout>
-</ScrollView>
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <!-- ================================================================ -->
+        <!-- REITER 1: HEUTE                                                   -->
+        <!-- ================================================================ -->
+        <ScrollView
+            android:id="@+id/scrollHeute"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp">
+
+                <!-- ============ HEUTE ============ -->
+                <LinearLayout style="@style/Section">
+
+                    <TextView
+                        style="@style/SectionTitle"
+                        android:text="Heute" />
+
+                    <TextView
+                        android:id="@+id/tvStatus"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textColor="@color/text"
+                        android:textSize="16sp" />
+
+                    <TextView
+                        android:id="@+id/tvDeadline"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:textColor="@color/text"
+                        android:textSize="22sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tvRemaining"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textSize="18sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tvWorked"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="14sp" />
+
+                    <!-- Startzeit mit der Stempeluhr abgleichen -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:orientation="horizontal">
+
+                        <Button
+                            android:id="@+id/btnMinus"
+                            style="@style/Btn"
+                            android:layout_weight="0.7"
+                            android:layout_marginEnd="6dp"
+                            android:text="−1 Min" />
+
+                        <Button
+                            android:id="@+id/btnEditStart"
+                            style="@style/Btn"
+                            android:layout_weight="1.6"
+                            android:backgroundTint="@color/primary"
+                            android:textColor="#FFFFFF"
+                            android:text="Startzeit festlegen" />
+
+                        <Button
+                            android:id="@+id/btnPlus"
+                            style="@style/Btn"
+                            android:layout_weight="0.7"
+                            android:layout_marginStart="6dp"
+                            android:text="+1 Min" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal">
+
+                        <Button
+                            android:id="@+id/btnStart"
+                            style="@style/Btn"
+                            android:layout_marginEnd="6dp"
+                            android:text="Jetzt eingestempelt" />
+
+                        <Button
+                            android:id="@+id/btnEnd"
+                            style="@style/Btn"
+                            android:layout_marginStart="6dp"
+                            android:text="Ausgestempelt" />
+                    </LinearLayout>
+
+                    <Button
+                        android:id="@+id/btnDiscard"
+                        style="@style/BtnWide"
+                        android:layout_marginTop="0dp"
+                        android:text="Verwerfen (kein Arbeitstag)" />
+                </LinearLayout>
+
+                <!-- ============ BERECHTIGUNGEN ============ -->
+                <LinearLayout style="@style/Section">
+
+                    <TextView
+                        style="@style/SectionTitle"
+                        android:text="Einrichtung (einmalig)" />
+
+                    <TextView
+                        android:id="@+id/tvPerms"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:lineSpacingExtra="4dp"
+                        android:textColor="@color/text"
+                        android:textSize="15sp" />
+
+                    <Button
+                        android:id="@+id/btnPermLocation"
+                        style="@style/BtnWide"
+                        android:text="1. Standort &amp; Benachrichtigungen erlauben" />
+
+                    <Button
+                        android:id="@+id/btnPermBackground"
+                        style="@style/BtnWide"
+                        android:text="2. Standort „Immer zulassen“" />
+
+                    <Button
+                        android:id="@+id/btnPermBattery"
+                        style="@style/BtnWide"
+                        android:text="3. Akku-Optimierung &amp; Wecker" />
+                </LinearLayout>
+
+                <!-- ============ ARBEITSORT ============ -->
+                <LinearLayout style="@style/Section">
+
+                    <TextView
+                        style="@style/SectionTitle"
+                        android:text="Arbeitsort" />
+
+                    <TextView
+                        android:id="@+id/tvGeofence"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="8dp"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="14sp" />
+
+                    <Button
+                        android:id="@+id/btnUseCurrent"
+                        style="@style/BtnWide"
+                        android:text="Aktuellen Standort als Arbeitsort speichern" />
+
+                    <Button
+                        android:id="@+id/btnPasteLocation"
+                        style="@style/BtnWide"
+                        android:text="📋 Aus Zwischenablage einfügen (Google Maps)" />
+
+                    <TextView
+                        style="@style/Label"
+                        android:text="Breitengrad (oder „48.49, 9.21“ einfügen)" />
+
+                    <EditText
+                        android:id="@+id/etLat"
+                        style="@style/Field"
+                        android:hint="z. B. 48.491234"
+                        android:imeOptions="actionNext"
+                        android:inputType="text" />
+
+                    <TextView
+                        style="@style/Label"
+                        android:text="Längengrad" />
+
+                    <EditText
+                        android:id="@+id/etLon"
+                        style="@style/Field"
+                        android:hint="z. B. 9.204321"
+                        android:imeOptions="actionDone"
+                        android:inputType="numberDecimal|numberSigned" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:orientation="horizontal">
+
+                        <Button
+                            android:id="@+id/btnOpenMap"
+                            style="@style/Btn"
+                            android:layout_marginEnd="6dp"
+                            android:text="In Karte prüfen" />
+
+                        <Button
+                            android:id="@+id/btnSaveLocation"
+                            style="@style/Btn"
+                            android:layout_marginStart="6dp"
+                            android:backgroundTint="@color/primary"
+                            android:textColor="#FFFFFF"
+                            android:text="✔ Arbeitsort übernehmen" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <!-- ============ EINSTELLUNGEN ============ -->
+                <LinearLayout style="@style/Section">
+
+                    <TextView
+                        style="@style/SectionTitle"
+                        android:text="Einstellungen" />
+
+                    <Switch
+                        android:id="@+id/swEnabled"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="8dp"
+                        android:text="Automatisch erkennen (Kommen &amp; Gehen)"
+                        android:textColor="@color/text"
+                        android:textSize="15sp" />
+
+                    <TextView
+                        style="@style/Label"
+                        android:text="Radius um den Arbeitsort (Meter, 100–300 empfohlen)" />
+
+                    <EditText
+                        android:id="@+id/etRadius"
+                        style="@style/Field"
+                        android:inputType="number" />
+
+                    <TextView
+                        style="@style/Label"
+                        android:text="Minuten vom Ankommen bis zur Stempeluhr" />
+
+                    <EditText
+                        android:id="@+id/etOffset"
+                        style="@style/Field"
+                        android:inputType="number" />
+
+                    <TextView
+                        style="@style/Label"
+                        android:text="Höchstarbeitszeit (Stunden, ohne Pause)" />
+
+                    <EditText
+                        android:id="@+id/etMaxHours"
+                        style="@style/Field"
+                        android:inputType="numberDecimal" />
+
+                    <TextView
+                        style="@style/Label"
+                        android:text="Pause, die dazugerechnet wird (Minuten)" />
+
+                    <EditText
+                        android:id="@+id/etBreak"
+                        style="@style/Field"
+                        android:inputType="number" />
+
+                    <TextView
+                        style="@style/Label"
+                        android:text="Warnungen (Minuten vorher, mit Komma getrennt)" />
+
+                    <EditText
+                        android:id="@+id/etWarn"
+                        style="@style/Field"
+                        android:inputType="text" />
+
+                    <TextView
+                        style="@style/Label"
+                        android:text="Kurz weg? Sitzung fortsetzen, wenn zurück innerhalb von (Minuten)" />
+
+                    <EditText
+                        android:id="@+id/etResume"
+                        style="@style/Field"
+                        android:inputType="number" />
+
+                    <Button
+                        android:id="@+id/btnSave"
+                        style="@style/BtnWide"
+                        android:backgroundTint="@color/primary"
+                        android:text="Speichern"
+                        android:textColor="#FFFFFF" />
+                </LinearLayout>
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:layout_marginBottom="24dp"
+                    android:text="Hinweis: Die App ist nur eine Erinnerungshilfe. Maßgeblich ist immer die Zeit an der Stempeluhr. Alle Daten bleiben auf diesem Handy."
+                    android:textColor="@color/text_secondary"
+                    android:textSize="12sp" />
+            </LinearLayout>
+        </ScrollView>
+
+        <!-- ================================================================ -->
+        <!-- REITER 2: ARBEITSZEIT & ÜBERSTUNDEN                               -->
+        <!-- ================================================================ -->
+        <ScrollView
+            android:id="@+id/scrollZeit"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp">
+
+                <!-- ============ MONAT ============ -->
+                <LinearLayout style="@style/Section">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <Button
+                            android:id="@+id/btnPrevMonth"
+                            android:layout_width="52dp"
+                            android:layout_height="wrap_content"
+                            android:text="◀" />
+
+                        <TextView
+                            android:id="@+id/tvMonth"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:gravity="center"
+                            android:textColor="@color/text"
+                            android:textSize="18sp"
+                            android:textStyle="bold" />
+
+                        <Button
+                            android:id="@+id/btnNextMonth"
+                            android:layout_width="52dp"
+                            android:layout_height="wrap_content"
+                            android:text="▶" />
+                    </LinearLayout>
+
+                    <TableLayout
+                        android:id="@+id/tableMonth"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:stretchColumns="1" />
+
+                    <TextView
+                        android:id="@+id/tvMonthSum"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:lineSpacingExtra="3dp"
+                        android:textColor="@color/text"
+                        android:textSize="14sp" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="Zeile antippen zum Bearbeiten. Pause mit * = automatisch berechnet."
+                        android:textColor="@color/text_secondary"
+                        android:textSize="12sp" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:orientation="horizontal">
+
+                        <Button
+                            android:id="@+id/btnAddEntry"
+                            style="@style/Btn"
+                            android:layout_marginEnd="6dp"
+                            android:text="+ Eintrag" />
+
+                        <Button
+                            android:id="@+id/btnAddFree"
+                            style="@style/Btn"
+                            android:layout_marginStart="6dp"
+                            android:text="+ Freier Tag (Abbau)" />
+                    </LinearLayout>
+
+                    <Button
+                        android:id="@+id/btnExport"
+                        style="@style/BtnWide"
+                        android:text="Alle Einträge als CSV teilen" />
+                </LinearLayout>
+
+                <!-- ============ ÜBERSTUNDENKONTO ============ -->
+                <LinearLayout style="@style/Section">
+
+                    <TextView
+                        style="@style/SectionTitle"
+                        android:text="Überstundenkonto" />
+
+                    <TextView
+                        android:id="@+id/tvBalance"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textColor="@color/text"
+                        android:textSize="30sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tvBalanceInfo"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:lineSpacingExtra="3dp"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="13sp" />
+
+                    <TextView
+                        android:id="@+id/tvPayout"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:background="@drawable/payout_bg"
+                        android:lineSpacingExtra="3dp"
+                        android:padding="12dp"
+                        android:textColor="@color/text"
+                        android:textSize="15sp" />
+
+                    <Button
+                        android:id="@+id/btnBookPayout"
+                        style="@style/BtnWide"
+                        android:text="Auszahlung verbuchen" />
+                </LinearLayout>
+
+                <!-- ============ EINSTELLUNGEN ÜBERSTUNDEN ============ -->
+                <LinearLayout style="@style/Section">
+
+                    <TextView
+                        style="@style/SectionTitle"
+                        android:text="Einstellungen Überstunden" />
+
+                    <TextView
+                        style="@style/Label"
+                        android:text="Sollarbeitszeit pro Arbeitstag (Stunden, z. B. 38,5 h ÷ 5 = 7,7)" />
+
+                    <EditText
+                        android:id="@+id/etSoll"
+                        style="@style/Field"
+                        android:inputType="numberDecimal" />
+
+                    <TextView
+                        style="@style/Label"
+                        android:text="Übertrag / Startsaldo (Stunden, auch negativ, z. B. 12,5 oder -3)" />
+
+                    <EditText
+                        android:id="@+id/etStartBal"
+                        style="@style/Field"
+                        android:inputType="numberDecimal|numberSigned" />
+
+                    <TextView
+                        style="@style/Label"
+                        android:text="Auszahlung ab Kontostand (Stunden)" />
+
+                    <EditText
+                        android:id="@+id/etLimit"
+                        style="@style/Field"
+                        android:inputType="numberDecimal" />
+
+                    <TextView
+                        style="@style/Label"
+                        android:text="Stundenlohn brutto (€)" />
+
+                    <EditText
+                        android:id="@+id/etRate"
+                        style="@style/Field"
+                        android:hint="z. B. 25,50"
+                        android:inputType="numberDecimal" />
+
+                    <TextView
+                        style="@style/Label"
+                        android:text="Zuschlag für Überstunden (%)" />
+
+                    <EditText
+                        android:id="@+id/etSurcharge"
+                        style="@style/Field"
+                        android:inputType="number" />
+
+                    <Button
+                        android:id="@+id/btnSaveOt"
+                        style="@style/BtnWide"
+                        android:backgroundTint="@color/primary"
+                        android:text="Speichern"
+                        android:textColor="#FFFFFF" />
+
+                    <TextView
+                        style="@style/Label"
+                        android:layout_marginTop="14dp"
+                        android:text="Verbuchte Auszahlungen" />
+
+                    <TextView
+                        android:id="@+id/tvAdjustments"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="monospace"
+                        android:lineSpacingExtra="3dp"
+                        android:textColor="@color/text"
+                        android:textSize="13sp" />
+
+                    <Button
+                        android:id="@+id/btnDeleteAdj"
+                        style="@style/BtnWide"
+                        android:text="Letzte Buchung löschen" />
+                </LinearLayout>
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:layout_marginBottom="24dp"
+                    android:text="Soll gilt an jedem Tag mit Eintrag. Tage ohne Eintrag (frei, Urlaub, krank) zählen nicht. Für einen Tag Überstundenabbau „+ Freier Tag“ eintragen. Beträge sind Schätzungen brutto vor Steuern und Abgaben."
+                    android:textColor="@color/text_secondary"
+                    android:textSize="12sp" />
+            </LinearLayout>
+        </ScrollView>
+    </FrameLayout>
+</LinearLayout>

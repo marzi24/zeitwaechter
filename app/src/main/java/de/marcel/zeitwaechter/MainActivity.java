@@ -18,6 +18,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.PowerManager;
 import android.provider.Settings;
+import android.view.View;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
@@ -57,10 +58,16 @@ public class MainActivity extends Activity {
         }
     };
 
-    private TextView tvStatus, tvDeadline, tvRemaining, tvWorked, tvPerms, tvGeofence, tvHistory;
+    private static final String STATE_TAB = "tab";
+
+    private TextView tvStatus, tvDeadline, tvRemaining, tvWorked, tvPerms, tvGeofence;
+    private TextView tabHeute, tabZeit;
+    private View scrollHeute, scrollZeit;
     private Button btnStart, btnEditStart, btnEnd, btnDiscard, btnMinus, btnPlus;
     private EditText etLat, etLon, etRadius, etOffset, etMaxHours, etBreak, etWarn, etResume;
     private Switch swEnabled;
+    private OvertimeTab overtime;
+    private int currentTab = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -74,7 +81,16 @@ public class MainActivity extends Activity {
         tvWorked = findViewById(R.id.tvWorked);
         tvPerms = findViewById(R.id.tvPerms);
         tvGeofence = findViewById(R.id.tvGeofence);
-        tvHistory = findViewById(R.id.tvHistory);
+
+        // ---- Reiter ----
+        tabHeute = findViewById(R.id.tabHeute);
+        tabZeit = findViewById(R.id.tabZeit);
+        scrollHeute = findViewById(R.id.scrollHeute);
+        scrollZeit = findViewById(R.id.scrollZeit);
+        overtime = new OvertimeTab(this);
+        tabHeute.setOnClickListener(v -> showTab(0));
+        tabZeit.setOnClickListener(v -> showTab(1));
+        showTab(savedInstanceState != null ? savedInstanceState.getInt(STATE_TAB, 0) : 0);
 
         btnStart = findViewById(R.id.btnStart);
         btnEditStart = findViewById(R.id.btnEditStart);
@@ -99,8 +115,15 @@ public class MainActivity extends Activity {
 
         // ---- Heute ----
         btnStart.setOnClickListener(v -> {
-            SessionManager.start(this, System.currentTimeMillis(), "manuell");
-            toast("Eingestempelt um " + Fmt.time(System.currentTimeMillis()));
+            long now = System.currentTimeMillis();
+            SessionManager.start(this, now, "manuell");
+            Work.DayInfo di = SessionManager.dayInfo(this, now);
+            if (di.earlierSessions > 0 && di.remainingNet <= 0) {
+                toast("Achtung: Die " + Fmt.hoursFromMinutes(Prefs.maxWorkMin(this))
+                        + " h sind heute schon erreicht!");
+            } else {
+                toast("Eingestempelt um " + Fmt.time(now) + " · spätestens raus: " + Fmt.timeSmart(di.deadline));
+            }
             refreshAll();
         });
 
@@ -162,13 +185,36 @@ public class MainActivity extends Activity {
             return false;
         });
 
-        // ---- Einstellungen & Verlauf ----
+        // ---- Einstellungen ----
         findViewById(R.id.btnSave).setOnClickListener(v -> saveSettings());
-        findViewById(R.id.btnExport).setOnClickListener(v -> exportCsv());
-        findViewById(R.id.btnEditLast).setOnClickListener(v -> editLastEntry());
-        findViewById(R.id.btnDeleteLast).setOnClickListener(v -> deleteLastEntry());
 
         handleIntent(getIntent());
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putInt(STATE_TAB, currentTab);
+    }
+
+    /** Reiter wechseln: 0 = Heute, 1 = Arbeitszeit. */
+    private void showTab(int tab) {
+        currentTab = tab;
+        OvertimeTab.show(scrollHeute, tab == 0);
+        OvertimeTab.show(scrollZeit, tab == 1);
+        styleTab(tabHeute, tab == 0);
+        styleTab(tabZeit, tab == 1);
+        if (tab == 1) overtime.refresh();
+    }
+
+    private void styleTab(TextView t, boolean selected) {
+        if (selected) {
+            t.setBackgroundResource(R.drawable.tab_selected);
+            t.setTextColor(getColor(R.color.on_primary));
+        } else {
+            t.setBackground(null);
+            t.setTextColor(getColor(R.color.text_secondary));
+        }
     }
 
     /** Zeigt die installierte Version an, z. B. "Version 1.2.1". */
@@ -243,11 +289,11 @@ public class MainActivity extends Activity {
     // Anzeige
     // =====================================================================
 
-    private void refreshAll() {
+    void refreshAll() {
         refreshStatus();
         refreshPerms();
         tvGeofence.setText("Ortserkennung: " + Prefs.geofenceStatus(this));
-        refreshHistory();
+        if (currentTab == 1) overtime.refresh();
     }
 
     private void refreshStatus() {
@@ -256,10 +302,12 @@ public class MainActivity extends Activity {
 
         if (active) {
             long start = Prefs.start(this);
-            long dl = SessionManager.deadline(this, start);
+            Work.DayInfo di = SessionManager.dayInfo(this, start);
+            long dl = di.deadline;
             long left = dl - now;
 
-            tvStatus.setText("Eingestempelt seit " + Fmt.timeSmart(start) + "  (" + Prefs.source(this) + ")");
+            tvStatus.setText((di.earlierSessions > 0 ? (di.earlierSessions + 1) + ". Einsatz heute – e" : "E")
+                    + "ingestempelt seit " + Fmt.timeSmart(start) + "  (" + Prefs.source(this) + ")");
             tvDeadline.setText("Spätestens raus: " + Fmt.timeSmart(dl));
 
             if (left > 0) {
@@ -275,18 +323,38 @@ public class MainActivity extends Activity {
             }
 
             long gross = Math.max(0, now - start);
-            tvWorked.setText("Anwesend: " + Fmt.duration(gross)
-                    + "  ·  netto ca. " + Fmt.duration(Fmt.netMs(gross))
-                    + "\nGrenze = Start + " + Fmt.hoursFromMinutes(Prefs.maxWorkMin(this)) + " h + "
-                    + Prefs.breakMin(this) + " Min. Pause");
+            String worked = "Anwesend: " + Fmt.duration(gross)
+                    + "  ·  netto ca. " + Fmt.duration(Fmt.netMs(gross));
+            if (di.earlierSessions > 0) {
+                worked += "\nFrühere Einsätze heute: " + Fmt.duration(di.earlierNet) + " netto"
+                        + "\nGrenze = Start + noch " + Fmt.duration(di.remainingNet) + " Arbeit"
+                        + (di.extraBreak > 0 ? " + " + (di.extraBreak / Work.MIN) + " Min. Pause" : "")
+                        + " (Lücke zählt als Pause)";
+            } else {
+                worked += "\nGrenze = Start + " + Fmt.hoursFromMinutes(Prefs.maxWorkMin(this)) + " h + "
+                        + Prefs.breakMin(this) + " Min. Pause";
+            }
+            tvWorked.setText(worked);
         } else {
-            tvStatus.setText("Nicht eingestempelt.");
-            tvDeadline.setText("—");
-            tvRemaining.setText(Prefs.trackingEnabled(this)
-                    ? "Wartet auf Ankunft am Arbeitsort …"
-                    : "Automatische Erkennung ist aus.");
-            tvRemaining.setTextColor(getColor(R.color.text_secondary));
+            Work.DayInfo di = SessionManager.dayInfo(this, now);
+            if (di.earlierSessions > 0) {
+                tvStatus.setText("Ausgestempelt. Heute schon " + Fmt.duration(di.earlierNet) + " netto gearbeitet"
+                        + (di.earlierSessions > 1 ? " (" + di.earlierSessions + " Einsätze)." : "."));
+                tvDeadline.setText(di.remainingNet > 0
+                        ? "Noch möglich: " + Fmt.durationWords(di.remainingNet)
+                        : Fmt.hoursFromMinutes(Prefs.maxWorkMin(this)) + " h erreicht");
+                tvRemaining.setText("Nochmal arbeiten? „Erneut einstempeln“ tippen – die Grenze wird automatisch angepasst.");
+                tvRemaining.setTextColor(getColor(di.remainingNet > 0 ? R.color.text_secondary : R.color.danger));
+            } else {
+                tvStatus.setText("Nicht eingestempelt.");
+                tvDeadline.setText("—");
+                tvRemaining.setText(Prefs.trackingEnabled(this)
+                        ? "Wartet auf Ankunft am Arbeitsort …"
+                        : "Automatische Erkennung ist aus.");
+                tvRemaining.setTextColor(getColor(R.color.text_secondary));
+            }
             tvWorked.setText("");
+            btnStart.setText(di.earlierSessions > 0 ? "Erneut einstempeln" : "Jetzt eingestempelt");
         }
 
         btnStart.setEnabled(!active);
@@ -305,26 +373,6 @@ public class MainActivity extends Activity {
                 + mark(SessionManager.canExact(this)) + "  Pünktliche Wecker\n"
                 + mark(Prefs.hasWorkLocation(this)) + "  Arbeitsort gespeichert";
         tvPerms.setText(sb);
-    }
-
-    private void refreshHistory() {
-        List<Prefs.Entry> list = Prefs.history(this);
-        if (list.isEmpty()) {
-            tvHistory.setText("Noch keine Einträge.");
-            return;
-        }
-        StringBuilder sb = new StringBuilder();
-        int shown = 0;
-        for (int i = list.size() - 1; i >= 0 && shown < 30; i--, shown++) {
-            Prefs.Entry e = list.get(i);
-            long gross = e.end - e.start;
-            sb.append(Fmt.day(e.start)).append("  ")
-                    .append(Fmt.time(e.start)).append("–").append(Fmt.time(e.end))
-                    .append("  ").append(Fmt.duration(gross))
-                    .append(" (netto ").append(Fmt.duration(Fmt.netMs(gross))).append(")");
-            if (i > 0) sb.append('\n');
-        }
-        tvHistory.setText(sb.toString());
     }
 
     private static String mark(boolean ok) {
@@ -642,83 +690,6 @@ public class MainActivity extends Activity {
     }
 
     // =====================================================================
-    // Verlauf
-    // =====================================================================
-
-    private void exportCsv() {
-        List<Prefs.Entry> list = Prefs.history(this);
-        if (list.isEmpty()) {
-            toast("Noch keine Einträge.");
-            return;
-        }
-        StringBuilder csv = new StringBuilder("Datum;Kommen (geschätzt);Gehen (geschätzt);Anwesenheit h;Netto h (geschätzt);Quelle\n");
-        for (Prefs.Entry e : list) {
-            long gross = e.end - e.start;
-            csv.append(Fmt.date(e.start)).append(';')
-                    .append(Fmt.time(e.start)).append(';')
-                    .append(Fmt.time(e.end)).append(';')
-                    .append(Fmt.hoursDecimal(gross)).append(';')
-                    .append(Fmt.hoursDecimal(Fmt.netMs(gross))).append(';')
-                    .append(e.source).append('\n');
-        }
-        Intent send = new Intent(Intent.ACTION_SEND);
-        send.setType("text/plain");
-        send.putExtra(Intent.EXTRA_SUBJECT, "Zeitwächter Verlauf");
-        send.putExtra(Intent.EXTRA_TEXT, csv.toString());
-        startActivity(Intent.createChooser(send, "Verlauf teilen"));
-    }
-
-    /** Beginn oder Ende des letzten Verlaufseintrags nachträglich ändern. */
-    private void editLastEntry() {
-        List<Prefs.Entry> list = Prefs.history(this);
-        if (list.isEmpty()) {
-            toast("Noch keine Einträge.");
-            return;
-        }
-        Prefs.Entry last = list.get(list.size() - 1);
-        new AlertDialog.Builder(this)
-                .setTitle("Letzten Eintrag bearbeiten")
-                .setMessage(Fmt.day(last.start) + "  " + Fmt.time(last.start) + "–" + Fmt.time(last.end)
-                        + "\nWas möchtest du ändern?")
-                .setPositiveButton("Beginn", (d, w) ->
-                        pickTimeOnDay(last.start, "Beginn laut Stempeluhr …", ms -> {
-                            long start = ms;
-                            if (start > last.end) start -= 24 * 3_600_000L; // Nachtdienst: Beginn am Vortag
-                            Prefs.replaceLastHistory(this, new Prefs.Entry(start, last.end, "korrigiert"));
-                            toast("Beginn geändert auf " + Fmt.timeSmart(start));
-                            refreshAll();
-                        }))
-                .setNeutralButton("Ende", (d, w) ->
-                        pickTimeOnDay(last.end, "Ende laut Stempeluhr …", ms -> {
-                            long end = ms;
-                            if (end < last.start) end += 24 * 3_600_000L; // Nachtdienst: Ende am Folgetag
-                            Prefs.replaceLastHistory(this, new Prefs.Entry(last.start, end, "korrigiert"));
-                            toast("Ende geändert auf " + Fmt.timeSmart(end));
-                            refreshAll();
-                        }))
-                .setNegativeButton("Abbrechen", null)
-                .show();
-    }
-
-    private void deleteLastEntry() {
-        List<Prefs.Entry> list = Prefs.history(this);
-        if (list.isEmpty()) {
-            toast("Noch keine Einträge.");
-            return;
-        }
-        Prefs.Entry last = list.get(list.size() - 1);
-        new AlertDialog.Builder(this)
-                .setTitle("Letzten Eintrag löschen?")
-                .setMessage(Fmt.day(last.start) + "  " + Fmt.time(last.start) + "–" + Fmt.time(last.end))
-                .setPositiveButton("Löschen", (d, w) -> {
-                    Prefs.popLastHistory(this);
-                    refreshAll();
-                })
-                .setNegativeButton("Abbrechen", null)
-                .show();
-    }
-
-    // =====================================================================
     // Hilfsfunktionen
     // =====================================================================
 
@@ -738,17 +709,6 @@ public class MainActivity extends Activity {
             }
             cb.onTime(ms);
         }, init.getHour(), init.getMinute(), true);
-        d.setTitle(title);
-        d.show();
-    }
-
-    /** Uhrzeit wählen, und zwar am selben Tag wie baseMs (für Verlaufseinträge). */
-    private void pickTimeOnDay(long baseMs, String title, TimeCallback cb) {
-        ZoneId zone = ZoneId.systemDefault();
-        LocalDateTime base = LocalDateTime.ofInstant(Instant.ofEpochMilli(baseMs), zone);
-        TimePickerDialog d = new TimePickerDialog(this, (view, hour, minute) ->
-                cb.onTime(base.toLocalDate().atTime(hour, minute).atZone(zone).toInstant().toEpochMilli()),
-                base.getHour(), base.getMinute(), true);
         d.setTitle(title);
         d.show();
     }

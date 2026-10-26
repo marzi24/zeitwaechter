@@ -84,13 +84,20 @@ final class Notifier {
             return;
         }
         long start = Prefs.start(c);
-        long dl = SessionManager.deadline(c, start);
+        Work.DayInfo di = SessionManager.dayInfo(c, start);
+        long dl = di.deadline;
+        String text = "Eingestempelt seit " + Fmt.time(start) + " (geschätzt)";
+        if (di.earlierSessions > 0) {
+            text += " · " + (di.earlierSessions + 1) + ". Einsatz heute, vorher "
+                    + Fmt.duration(di.earlierNet) + " netto";
+        }
 
         Notification n = new Notification.Builder(c, CH_STATUS)
                 .setSmallIcon(R.drawable.ic_stat_clock)
                 .setColor(COLOR)
                 .setContentTitle("Spätestens ausstempeln: " + Fmt.timeSmart(dl))
-                .setContentText("Eingestempelt seit " + Fmt.time(start) + " (geschätzt)")
+                .setContentText(text)
+                .setStyle(new Notification.BigTextStyle().bigText(text))
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)
                 .setShowWhen(true)
@@ -149,8 +156,12 @@ final class Notifier {
         String title = minutesLeft > 0
                 ? "Noch " + minutesLeft + " Min. bis zur " + limit + "!"
                 : limit + " erreicht – jetzt ausstempeln!";
-        String text = "Spätestens um " + Fmt.timeSmart(deadline) + " ausstempeln (inkl. "
-                + Prefs.breakMin(c) + " Min. Pause).";
+        Work.DayInfo di = SessionManager.dayInfo(c, Prefs.start(c));
+        String text = di.earlierSessions > 0
+                ? "Spätestens um " + Fmt.timeSmart(deadline) + " ausstempeln. Die "
+                        + Fmt.duration(di.earlierNet) + " aus deinen früheren Einsätzen heute sind eingerechnet."
+                : "Spätestens um " + Fmt.timeSmart(deadline) + " ausstempeln (inkl. "
+                        + Prefs.breakMin(c) + " Min. Pause).";
 
         Notification n = new Notification.Builder(c, CH_WARN)
                 .setSmallIcon(R.drawable.ic_stat_clock)
