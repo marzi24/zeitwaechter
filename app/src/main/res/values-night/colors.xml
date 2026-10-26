@@ -13,4 +13,5 @@
     <color name="row_alt">#252A31</color>
     <color name="payout_bg">#1F2C3D</color>
     <color name="on_primary">#FFFFFF</color>
+    <color name="warn_bg">#3D3220</color>
 </resources>

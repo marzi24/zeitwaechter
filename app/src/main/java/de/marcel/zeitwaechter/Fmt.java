@@ -41,6 +41,16 @@ final class Fmt {
         return DAY.format(zoned(ms));
     }
 
+    /** "Mo. 21.10." für ein Datum ohne Uhrzeit */
+    static String dayOf(LocalDate d) {
+        return DAY.format(d);
+    }
+
+    /** "21.10.2026" für ein Datum ohne Uhrzeit */
+    static String dateOf(LocalDate d) {
+        return DATE.format(d);
+    }
+
     /** "21.10.2026" */
     static String date(long ms) {
         return DATE.format(zoned(ms));

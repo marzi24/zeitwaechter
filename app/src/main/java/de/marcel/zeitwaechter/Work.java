@@ -165,22 +165,147 @@ final class Work {
         return out;
     }
 
-    /** Überstundenkonto = Übertrag + Summe aller Tagesdifferenzen + Buchungen (z. B. Auszahlungen). */
-    static long balanceMs(List<Day> days, int startBalanceMin, List<Prefs.Adjustment> adjustments) {
-        long sum = startBalanceMin * MIN;
-        for (Day d : days) sum += d.diff;
-        for (Prefs.Adjustment a : adjustments) sum += a.minutes * MIN;
-        return sum;
+    // =====================================================================
+    // Tagesart und Zuschläge
+    // =====================================================================
+
+    enum DayType { WERKTAG, SAMSTAG, SONNTAG, FEIERTAG }
+
+    /** Feiertag geht vor Sonntag, Sonntag vor Samstag. */
+    static DayType type(LocalDate d, String state, String extraHolidays) {
+        if (Holidays.isHoliday(d, state, extraHolidays)) return DayType.FEIERTAG;
+        switch (d.getDayOfWeek()) {
+            case SUNDAY:
+                return DayType.SONNTAG;
+            case SATURDAY:
+                return DayType.SAMSTAG;
+            default:
+                return DayType.WERKTAG;
+        }
     }
 
-    /** Stunden über der Grenze (z. B. 40 h), die ausgezahlt werden. */
-    static long payoutMs(long balanceMs, int limitMin) {
-        return Math.max(0, balanceMs - limitMin * MIN);
+    /** Zuschläge in Prozent (aus den Einstellungen). */
+    static final class Surcharges {
+        int week = 25;          // Montag–Freitag
+        int satLow = 25;        // Samstag, die ersten satLowMin Minuten Überstunden
+        int satLowMin = 120;    // = 2 Stunden
+        int satHigh = 50;       // Samstag ab der 3. Stunde
+        int sun = 70;           // Sonntag
+        int hol = 100;          // Feiertag
+        String state = "BW";
+        String extraHolidays = "";
     }
 
-    /** Auszahlungsbetrag brutto in Euro: Stunden × Stundenlohn × (1 + Zuschlag). */
-    static double payoutEuro(long payoutMs, double hourlyRate, int surchargePct) {
-        double hours = payoutMs / (double) HOUR;
-        return hours * hourlyRate * (1 + surchargePct / 100.0);
+    /** Überstunden eines Zeitraums, aufgeteilt nach Zuschlagsstufe. */
+    static final class OtSplit {
+        long week, satLow, satHigh, sun, hol;
+
+        long total() {
+            return week + satLow + satHigh + sun + hol;
+        }
+
+        /** Zuschlag in „Prozent-Stunden“, z. B. 2 h × 25 % = 50. */
+        double pctHours(Surcharges s) {
+            return (week * s.week + satLow * s.satLow + satHigh * s.satHigh + sun * s.sun + hol * s.hol)
+                    / (double) HOUR;
+        }
+
+        /** Durchschnittlicher Zuschlag aller Überstunden in Prozent. */
+        double averagePct(Surcharges s) {
+            long t = total();
+            if (t <= 0) return s.week;
+            return pctHours(s) / (t / (double) HOUR);
+        }
+    }
+
+    /**
+     * Teilt die Überstunden (nur Tage mit Plus) nach Tagesart auf.
+     * Samstag: die ersten {@code satLowMin} Minuten mit satLow, der Rest mit satHigh.
+     */
+    static OtSplit split(List<Day> days, Surcharges s) {
+        OtSplit o = new OtSplit();
+        for (Day d : days) {
+            if (d.diff <= 0) continue;
+            switch (type(d.date, s.state, s.extraHolidays)) {
+                case FEIERTAG:
+                    o.hol += d.diff;
+                    break;
+                case SONNTAG:
+                    o.sun += d.diff;
+                    break;
+                case SAMSTAG:
+                    long low = Math.min(d.diff, s.satLowMin * MIN);
+                    o.satLow += low;
+                    o.satHigh += d.diff - low;
+                    break;
+                default:
+                    o.week += d.diff;
+            }
+        }
+        return o;
+    }
+
+    // =====================================================================
+    // Monatskonto: am Monatsende wird alles über der Grenze ausgezahlt
+    // =====================================================================
+
+    /** Abrechnung eines Monats. */
+    static final class Month {
+        YearMonth ym;
+        /** Erster gezählter Tag (bei Start-Monat das Startdatum, sonst der 1.). */
+        LocalDate from;
+        long startBal;
+        long diff;
+        long endBal;
+        /** Stunden über der Grenze, die ausgezahlt werden. */
+        long payout;
+        /** Kontostand, mit dem der nächste Monat beginnt. */
+        long carry;
+        OtSplit ot;
+        List<Day> days;
+    }
+
+    /**
+     * Rechnet das Überstundenkonto Monat für Monat ab dem Startdatum durch.
+     * Kontostand Monatsende = Monatsanfang + Überstunden des Monats.
+     * Liegt er über der Grenze, wird der Rest ausgezahlt und der nächste Monat beginnt mit der Grenze.
+     * Liegt er darunter, wird er so übernommen.
+     *
+     * @return Liste der Monate von startDate bis einschließlich {@code until}; leer, wenn until davor liegt.
+     */
+    static List<Month> account(List<Day> allDays, LocalDate startDate, long startBalMs, long limitMs,
+                               YearMonth until, Surcharges s) {
+        List<Month> out = new ArrayList<>();
+        YearMonth ym = YearMonth.from(startDate);
+        long bal = startBalMs;
+        while (!ym.isAfter(until)) {
+            Month m = new Month();
+            m.ym = ym;
+            m.from = ym.equals(YearMonth.from(startDate)) ? startDate : ym.atDay(1);
+            m.days = new ArrayList<>();
+            for (Day d : allDays) {
+                if (YearMonth.from(d.date).equals(ym) && !d.date.isBefore(m.from)) m.days.add(d);
+            }
+            m.startBal = bal;
+            for (Day d : m.days) m.diff += d.diff;
+            m.endBal = m.startBal + m.diff;
+            m.payout = Math.max(0, m.endBal - limitMs);
+            m.carry = m.endBal - m.payout;
+            m.ot = split(m.days, s);
+            out.add(m);
+            bal = m.carry;
+            ym = ym.plusMonths(1);
+        }
+        return out;
+    }
+
+    /**
+     * Auszahlung brutto in Euro: Stunden × Stundenlohn × (1 + Ø-Zuschlag).
+     * Der Zuschlag ist der Durchschnitt über die Überstunden dieses Monats
+     * (jede ausgezahlte Stunde wird anteilig nach Werktag/Samstag/Sonntag/Feiertag bewertet).
+     */
+    static double payoutEuro(Month m, double hourlyRate, Surcharges s) {
+        double hours = m.payout / (double) HOUR;
+        return hours * hourlyRate * (1 + m.ot.averagePct(s) / 100.0);
     }
 }

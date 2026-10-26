@@ -7,6 +7,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -48,8 +49,16 @@ public final class Prefs {
     private static final String K_START_BAL = "start_balance_min";
     private static final String K_OT_LIMIT = "ot_limit_min";
     private static final String K_RATE = "hourly_rate";
-    private static final String K_SURCHARGE = "surcharge_pct";
     private static final String K_ADJ = "ot_adjustments";
+    private static final String K_START_DATE = "ot_start_epochday";
+    private static final String K_SUR_WEEK = "sur_week";
+    private static final String K_SUR_SAT_LOW = "sur_sat_low";
+    private static final String K_SAT_LOW_MIN = "sat_low_min";
+    private static final String K_SUR_SAT_HIGH = "sur_sat_high";
+    private static final String K_SUR_SUN = "sur_sun";
+    private static final String K_SUR_HOL = "sur_hol";
+    private static final String K_STATE = "holiday_state";
+    private static final String K_EXTRA_HOL = "extra_holidays";
 
     private static final int MAX_HISTORY = 5000;
 
@@ -343,19 +352,56 @@ public final class Prefs {
         }
     }
 
-    /** Überstundenzuschlag in Prozent. */
-    public static int surchargePct(Context c) {
-        return sp(c).getInt(K_SURCHARGE, 0);
+    /**
+     * Stichtag, ab dem das Überstundenkonto rechnet (der Startsaldo gilt zu Beginn dieses Tages).
+     * Beim ersten Aufruf wird der 1. des aktuellen Monats festgelegt.
+     */
+    public static LocalDate otStartDate(Context c) {
+        long epochDay = sp(c).getLong(K_START_DATE, Long.MIN_VALUE);
+        if (epochDay == Long.MIN_VALUE) {
+            LocalDate d = LocalDate.now().withDayOfMonth(1);
+            sp(c).edit().putLong(K_START_DATE, d.toEpochDay()).commit();
+            return d;
+        }
+        return LocalDate.ofEpochDay(epochDay);
     }
 
-    public static void saveOvertimeSettings(Context c, int sollMin, int startBalMin, int limitMin,
-                                            double rate, int surchargePct) {
+    public static void saveOvertimeSettings(Context c, int sollMin, int startBalMin, LocalDate startDate,
+                                            int limitMin, double rate) {
         sp(c).edit()
                 .putInt(K_SOLL, sollMin)
                 .putInt(K_START_BAL, startBalMin)
+                .putLong(K_START_DATE, startDate.toEpochDay())
                 .putInt(K_OT_LIMIT, limitMin)
                 .putString(K_RATE, Double.toString(rate))
-                .putInt(K_SURCHARGE, surchargePct)
+                .commit();
+    }
+
+    /** Zuschläge und Feiertags-Einstellungen. */
+    public static Work.Surcharges surcharges(Context c) {
+        Work.Surcharges s = new Work.Surcharges();
+        SharedPreferences p = sp(c);
+        s.week = p.getInt(K_SUR_WEEK, 25);
+        s.satLow = p.getInt(K_SUR_SAT_LOW, 25);
+        s.satLowMin = p.getInt(K_SAT_LOW_MIN, 120);
+        s.satHigh = p.getInt(K_SUR_SAT_HIGH, 50);
+        s.sun = p.getInt(K_SUR_SUN, 70);
+        s.hol = p.getInt(K_SUR_HOL, 100);
+        s.state = p.getString(K_STATE, "BW");
+        s.extraHolidays = p.getString(K_EXTRA_HOL, "");
+        return s;
+    }
+
+    public static void saveSurcharges(Context c, Work.Surcharges s) {
+        sp(c).edit()
+                .putInt(K_SUR_WEEK, s.week)
+                .putInt(K_SUR_SAT_LOW, s.satLow)
+                .putInt(K_SAT_LOW_MIN, s.satLowMin)
+                .putInt(K_SUR_SAT_HIGH, s.satHigh)
+                .putInt(K_SUR_SUN, s.sun)
+                .putInt(K_SUR_HOL, s.hol)
+                .putString(K_STATE, s.state)
+                .putString(K_EXTRA_HOL, s.extraHolidays)
                 .commit();
     }
 

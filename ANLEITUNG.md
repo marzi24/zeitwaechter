@@ -97,7 +97,9 @@ GitHub hat Rechner, die die App für dich bauen. Das ist kostenlos.
 
 ## 4. Die App einrichten (einmalig, ca. 3 Minuten)
 
-Öffne die App. Im Bereich **„Einrichtung“** siehst du ✅ und ❌. Gehe die drei Knöpfe der Reihe nach durch:
+Öffne die App und tippe oben rechts auf das **Zahnrad ⚙**. Dort sind **alle Einstellungen** an einem Ort.
+Ganz oben im Bereich **„Einrichtung“** siehst du ✅ und ❌. Gehe die drei Knöpfe der Reihe nach durch.
+Solange etwas fehlt, zeigt der Reiter „Heute“ einen gelben Hinweis, der direkt hierher führt.
 
 **Knopf 1 – „Standort & Benachrichtigungen erlauben“**
 - Standort: **„Genau“** auswählen und **„Bei Nutzung der App“** tippen.
@@ -123,7 +125,7 @@ GitHub hat Rechner, die die App für dich bauen. Das ist kostenlos.
   **„✔ Arbeitsort übernehmen“** tippen (oder auf der Tastatur auf „Fertig“).
 - Mit **„In Karte prüfen“** kontrollierst du, ob der Punkt stimmt.
 
-**Einstellungen** (Standardwerte passen meist):
+**Erkennung & Erinnerungen** (Standardwerte passen meist):
 
 | Feld | Standard | Erklärung |
 |---|---|---|
@@ -134,8 +136,10 @@ GitHub hat Rechner, die die App für dich bauen. Das ist kostenlos.
 | Warnungen | 30, 15, 5 | Wann vor der Grenze gewarnt wird. Beliebig viele, mit Komma. |
 | Fortsetzen innerhalb von | 45 | Kommst du so schnell zurück, läuft die alte Sitzung weiter. |
 
-Danach **„Speichern“**. Bei „Ortserkennung“ sollte **„Aktiv (Radius … m)“** stehen. Alle Punkte bei
-„Einrichtung“ sollten ✅ zeigen.
+Darunter folgen **Arbeitszeit & Überstunden**, **Zuschläge** und **Feiertage** (siehe Abschnitt 6).
+Ganz unten auf **„Alle Einstellungen speichern“** tippen. Bei „Ortserkennung“ sollte
+**„Aktiv (Radius … m)“** stehen, und alle Punkte bei „Einrichtung“ sollten ✅ zeigen.
+Mit **✕** oben rechts oder der Zurück-Taste schließt du das Menü wieder.
 
 ---
 
@@ -176,21 +180,24 @@ Genaue Anleitungen pro Modell findest du auf <https://dontkillmyapp.com>.
 
 ### Reiter „Arbeitszeit“: Tabelle und Überstunden
 
-**Einmalig einrichten** (unten im Reiter, „Einstellungen Überstunden“):
+**Einmalig einrichten** (⚙ → „Arbeitszeit & Überstunden“, „Zuschläge“, „Feiertage“):
 
 | Feld | Bedeutung |
 |---|---|
 | Sollarbeitszeit pro Arbeitstag | z. B. 38,5 h/Woche ÷ 5 Tage = **7,7** |
-| Übertrag / Startsaldo | Dein aktueller Überstundenstand laut Arbeitgeber, z. B. **35** (auch negativ möglich) |
-| Auszahlung ab | **40** – alles darüber wird ausgezahlt |
+| Überstunden zum Start | Dein aktueller Überstundenstand laut Arbeitgeber, z. B. **35** (auch negativ möglich) |
+| Überstunden-Stand gilt ab | Der Tag, ab dem die App rechnet. Einträge davor zählen nicht zum Konto. |
+| Auszahlung am Monatsende ab | **40** – alles darüber wird am Monatsende ausgezahlt |
 | Stundenlohn brutto | z. B. **25,50** |
-| Zuschlag | Prozent-Zuschlag auf Überstunden, falls es einen gibt, sonst **0** |
+| Zuschläge | Mo–Fr **25 %**, Samstag erste **2** h **25 %**, danach **50 %**, Sonntag **70 %**, Feiertag **100 %** |
+| Bundesland | Für die gesetzlichen Feiertage (Standard Baden-Württemberg). Darunter siehst du die Liste fürs aktuelle Jahr. |
+| Zusätzliche Feiertage | z. B. `24.12, 31.12`, falls dein Arbeitgeber diese Tage wie Feiertage bezuschlagt |
 
 **Die Tabelle** zeigt pro Monat (mit ◀ ▶ blättern):
 
 | Spalte | Bedeutung |
 |---|---|
-| Datum | Arbeitstag (bei zwei Einsätzen am Tag stehen zwei Zeilen untereinander) |
+| Datum | Arbeitstag (bei zwei Einsätzen am Tag zwei Zeilen). **Farbig** = Samstag/Sonntag, **F** = Feiertag |
 | Zeit | Kommen–Gehen, ⁺¹ = Ende am nächsten Tag |
 | Pause | Mit * = automatisch (über 6 h → 30 Min., über 9 h → 45 Min.), ohne * = von dir eingetragen |
 | Netto | Arbeitszeit ohne Pause |
@@ -201,17 +208,42 @@ Genaue Anleitungen pro Modell findest du auf <https://dontkillmyapp.com>.
 - **„+ Freier Tag (Abbau)“** → Tag, an dem du Überstunden abfeierst. Zählt die Sollzeit als Minus.
 - Tage **ohne** Eintrag (frei laut Dienstplan, Urlaub, krank) zählen weder Soll noch Ist.
 
-**Überstundenkonto** = Übertrag + alle Tages-Plus/Minus − verbuchte Auszahlungen.
-Liegt das Konto über 40 h, steht darunter, wie viel ausgezahlt wird:
+**Überstundenkonto – so rechnet die App jeden Monat:**
 
 ```
-Beispiel: Konto 47:30 h  →  über 40 h: 7:30 h = 7,50 h
-          7,50 h × 25,00 € = 187,50 € brutto
+Kontostand Monatsanfang          +40:00 h
++ Überstunden des Monats          +7:30 h
+= Kontostand Monatsende          +47:30 h
+→ über 40 h wird ausgezahlt        7:30 h
+→ nächster Monat startet mit      +40:00 h
 ```
 
-Wenn die Stunden tatsächlich ausgezahlt wurden: **„Auszahlung verbuchen“** tippen. Dann werden sie
-vom Konto abgezogen und es steht wieder auf 40 h. Ein Versehen machst du mit „Letzte Buchung löschen“
-rückgängig. Die Beträge sind **brutto**, vor Steuern und Sozialabgaben.
+Liegt das Konto am Monatsende unter 40 h, wird nichts ausgezahlt und der Stand so übernommen.
+Im ersten Monat startet das Konto mit deinen **„Überstunden zum Start“** ab dem eingestellten Tag.
+
+**Zuschläge:** Die App teilt die Überstunden jedes Tages nach Art auf:
+
+| Tag | Zuschlag (Standard) |
+|---|---|
+| Montag – Freitag | 25 % |
+| Samstag, die ersten 2 Überstunden | 25 % |
+| Samstag, ab der 3. Überstunde | 50 % |
+| Sonntag | 70 % |
+| Feiertag (geht vor Sa/So) | 100 % |
+
+Unter dem Kontostand siehst du die Aufteilung des Monats und den **Durchschnittszuschlag**.
+Die ausgezahlten Stunden werden mit diesem Durchschnitt bewertet, also jede Stunde anteilig so,
+wie die Überstunden in diesem Monat entstanden sind:
+
+```
+Beispiel Oktober: 4 h Mo–Fr (25 %), 2 h Sa (25 %), 2 h Sa (50 %), 2 h So (70 %), 1 h Feiertag (100 %)
+                  = 11 Überstunden, Ø 44,55 % Zuschlag
+Konto 35 + 11 = 46 h  →  6 h über 40 h
+6 h × 25,00 € × 1,4455 = 216,82 € brutto
+```
+
+Ein Arbeitstag zählt komplett zum Datum, an dem er begonnen hat (wichtig bei Nachtdiensten über Mitternacht).
+Alle Beträge sind **brutto**, vor Steuern und Sozialabgaben.
 
 Mit **„Alle Einträge als CSV teilen“** schickst du dir alles z. B. per Mail und öffnest es in Excel.
 
@@ -250,8 +282,10 @@ Zeitwaechter/
 │  ├─ AndroidManifest.xml       Berechtigungen und Bausteine der App
 │  ├─ java/de/marcel/zeitwaechter/
 │  │  ├─ MainActivity.java      Der Bildschirm mit Reiter „Heute“ (Knöpfe, Anzeige, Einstellungen)
-│  │  ├─ OvertimeTab.java       Reiter „Arbeitszeit“: Tabelle, Überstundenkonto, Auszahlung
-│  │  ├─ Work.java              Rechnungen: Tagesgrenze über mehrere Einsätze, Überstunden
+│  │  ├─ OvertimeTab.java       Reiter „Arbeitszeit“: Tabelle, Monatskonto, Zuschläge, Auszahlung
+│  │  ├─ SettingsTab.java       Einstellungsmenü (Zahnrad): alle Einstellungen an einem Ort
+│  │  ├─ Work.java              Rechnungen: Tagesgrenze, Überstunden, Zuschläge, Monatskonto
+│  │  ├─ Holidays.java          Gesetzliche Feiertage je Bundesland (inkl. Ostern-Berechnung)
 │  │  ├─ SessionManager.java    Die Logik: Start, Ende, Grenze berechnen, Warnungen planen
 │  │  ├─ GeofenceHelper.java    Richtet den Kreis um den Arbeitsort ein
 │  │  ├─ GeofenceReceiver.java  Wird beim Betreten/Verlassen aufgerufen

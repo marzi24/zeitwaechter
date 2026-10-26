@@ -34,26 +34,19 @@ final class OvertimeTab {
     private final MainActivity a;
     private YearMonth month = YearMonth.now();
 
-    private final TextView tvMonth, tvMonthSum, tvBalance, tvBalanceInfo, tvPayout, tvAdjustments;
+    private final TextView tvMonth, tvMonthSum, tvAccTitle, tvBalance, tvBalanceInfo, tvOtSplit, tvPayout;
     private final TableLayout table;
-    private final EditText etSoll, etStartBal, etLimit, etRate, etSurcharge;
-    private final Button btnBookPayout;
 
     OvertimeTab(MainActivity activity) {
         a = activity;
         tvMonth = a.findViewById(R.id.tvMonth);
         tvMonthSum = a.findViewById(R.id.tvMonthSum);
+        tvAccTitle = a.findViewById(R.id.tvAccTitle);
         tvBalance = a.findViewById(R.id.tvBalance);
         tvBalanceInfo = a.findViewById(R.id.tvBalanceInfo);
+        tvOtSplit = a.findViewById(R.id.tvOtSplit);
         tvPayout = a.findViewById(R.id.tvPayout);
-        tvAdjustments = a.findViewById(R.id.tvAdjustments);
         table = a.findViewById(R.id.tableMonth);
-        etSoll = a.findViewById(R.id.etSoll);
-        etStartBal = a.findViewById(R.id.etStartBal);
-        etLimit = a.findViewById(R.id.etLimit);
-        etRate = a.findViewById(R.id.etRate);
-        etSurcharge = a.findViewById(R.id.etSurcharge);
-        btnBookPayout = a.findViewById(R.id.btnBookPayout);
 
         a.findViewById(R.id.btnPrevMonth).setOnClickListener(v -> {
             month = month.minusMonths(1);
@@ -66,11 +59,6 @@ final class OvertimeTab {
         a.findViewById(R.id.btnAddEntry).setOnClickListener(v -> editEntry(-1));
         a.findViewById(R.id.btnAddFree).setOnClickListener(v -> addFreeDay());
         a.findViewById(R.id.btnExport).setOnClickListener(v -> exportCsv());
-        a.findViewById(R.id.btnSaveOt).setOnClickListener(v -> saveSettings());
-        btnBookPayout.setOnClickListener(v -> bookPayout());
-        a.findViewById(R.id.btnDeleteAdj).setOnClickListener(v -> deleteLastAdjustment());
-
-        fillSettings();
     }
 
     // =====================================================================
@@ -80,12 +68,12 @@ final class OvertimeTab {
     void refresh() {
         List<Prefs.Entry> hist = Prefs.history(a);
         List<Work.Day> all = Work.days(hist, Prefs.sollMin(a));
-        refreshTable(hist, all);
-        refreshBalance(all);
-        refreshAdjustments();
+        Work.Surcharges sur = Prefs.surcharges(a);
+        refreshTable(hist, all, sur);
+        refreshAccount(all, sur);
     }
 
-    private void refreshTable(List<Prefs.Entry> hist, List<Work.Day> all) {
+    private void refreshTable(List<Prefs.Entry> hist, List<Work.Day> all, Work.Surcharges sur) {
         String name = month.getMonth().getDisplayName(TextStyle.FULL, Locale.GERMANY);
         tvMonth.setText(name + " " + month.getYear());
 
@@ -107,7 +95,10 @@ final class OvertimeTab {
                 final int idx = d.indexes.get(k);
                 Prefs.Entry e = hist.get(idx);
                 boolean last = k == d.indexes.size() - 1;
-                String date = k == 0 ? Fmt.day(e.start) : "";
+                Work.DayType type = Work.type(d.date, sur.state, sur.extraHolidays);
+                String date = k == 0
+                        ? Fmt.day(e.start) + (type == Work.DayType.FEIERTAG ? " F" : "")
+                        : "";
                 String time, pause, net;
                 if (e.isFreeDay()) {
                     time = "frei (Abbau)";
@@ -121,6 +112,9 @@ final class OvertimeTab {
                 }
                 String diff = last ? Fmt.signed(d.diff) : "";
                 TableRow r = row(bg, false, text, date, time, pause, net, diff);
+                if (k == 0 && type != Work.DayType.WERKTAG) {
+                    ((TextView) r.getChildAt(0)).setTextColor(a.getColor(R.color.primary));
+                }
                 if (last) {
                     TextView dv = (TextView) r.getChildAt(4);
                     dv.setTextColor(a.getColor(d.diff >= 0 ? R.color.ok : R.color.danger));
@@ -155,61 +149,96 @@ final class OvertimeTab {
                 + (runningHere ? "\n(laufender Einsatz wird nach dem Ausstempeln eingerechnet)" : ""));
     }
 
-    private void refreshBalance(List<Work.Day> all) {
-        List<Prefs.Adjustment> adj = Prefs.adjustments(a);
-        int startBal = Prefs.startBalanceMin(a);
-        int limit = Prefs.otLimitMin(a);
-        long bal = Work.balanceMs(all, startBal, adj);
+    /** Überstundenkonto des angezeigten Monats mit Zuschlägen und Auszahlung. */
+    private void refreshAccount(List<Work.Day> all, Work.Surcharges sur) {
+        LocalDate startDate = Prefs.otStartDate(a);
+        long limit = Prefs.otLimitMin(a) * Work.MIN;
+        String limitTxt = Fmt.hoursFromMinutes(Prefs.otLimitMin(a)) + " h";
+        YearMonth now = YearMonth.now();
+        YearMonth until = month.isAfter(now) ? month : now;
+        List<Work.Month> months = Work.account(all, startDate,
+                Prefs.startBalanceMin(a) * Work.MIN, limit, until, sur);
 
-        long fromDays = 0;
-        for (Work.Day d : all) fromDays += d.diff;
-        long fromAdj = 0;
-        for (Prefs.Adjustment x : adj) fromAdj += x.minutes * Work.MIN;
+        Work.Month m = null;
+        for (Work.Month x : months) if (x.ym.equals(month)) m = x;
 
-        tvBalance.setText(Fmt.signed(bal) + " h");
-        tvBalance.setTextColor(a.getColor(bal < 0 ? R.color.danger : R.color.text));
-        tvBalanceInfo.setText("Übertrag " + Fmt.signed(startBal * Work.MIN) + " h"
-                + "  ·  aus Einträgen " + Fmt.signed(fromDays) + " h"
-                + (adj.isEmpty() ? "" : "  ·  Auszahlungen " + Fmt.signed(fromAdj) + " h"));
-
-        long pay = Work.payoutMs(bal, limit);
-        double rate = Prefs.hourlyRate(a);
-        int pct = Prefs.surchargePct(a);
-        String limitTxt = Fmt.hoursFromMinutes(limit) + " h";
-        StringBuilder sb = new StringBuilder();
-        if (pay > 0) {
-            double euro = Work.payoutEuro(pay, rate, pct);
-            sb.append("Über ").append(limitTxt).append(": ").append(Fmt.hm(pay)).append(" h")
-                    .append(String.format(Locale.GERMANY, " (= %.2f h)", pay / (double) Work.HOUR))
-                    .append("\nWird ausgezahlt: ca. ").append(Fmt.euro(euro)).append(" brutto");
-            if (rate > 0) {
-                sb.append(String.format(Locale.GERMANY, "\n%.2f h × %s", pay / (double) Work.HOUR, Fmt.euro(rate)));
-                if (pct > 0) sb.append(" + ").append(pct).append(" % Zuschlag");
-            } else {
-                sb.append("\n→ Stundenlohn unten in den Einstellungen eintragen.");
-            }
-        } else {
-            sb.append("Auszahlung ab ").append(limitTxt).append(" Kontostand.\nBis dahin fehlen noch ")
-                    .append(Fmt.hm(limit * Work.MIN - bal)).append(" h.\nAktuell: ").append(Fmt.euro(0));
-        }
-        tvPayout.setText(sb.toString());
-        btnBookPayout.setEnabled(pay > 0);
-    }
-
-    private void refreshAdjustments() {
-        List<Prefs.Adjustment> adj = Prefs.adjustments(a);
-        if (adj.isEmpty()) {
-            tvAdjustments.setText("Noch keine.");
+        if (m == null) {
+            tvAccTitle.setText("Überstundenkonto");
+            tvBalance.setText("—");
+            tvBalance.setTextColor(a.getColor(R.color.text_secondary));
+            tvBalanceInfo.setText("Dieser Monat liegt vor deinem Startdatum (" + Fmt.dateOf(startDate)
+                    + ") und zählt nicht zum Konto.\nStartdatum und Start-Überstunden: ⚙ Einstellungen.");
+            tvOtSplit.setText("");
+            tvPayout.setText("Keine Abrechnung für diesen Monat.");
             return;
         }
-        StringBuilder sb = new StringBuilder();
-        for (int i = adj.size() - 1; i >= 0; i--) {
-            Prefs.Adjustment x = adj.get(i);
-            sb.append(Fmt.date(x.time)).append("  ").append(Fmt.signed(x.minutes * Work.MIN)).append(" h  ")
-                    .append(x.note);
-            if (i > 0) sb.append('\n');
+
+        boolean current = month.equals(now);
+        boolean future = month.isAfter(now);
+        tvAccTitle.setText(current ? "Überstundenkonto – Stand heute" : "Überstundenkonto – Monatsende");
+        tvBalance.setText(Fmt.signed(m.endBal) + " h");
+        tvBalance.setTextColor(a.getColor(m.endBal < 0 ? R.color.danger : R.color.text));
+
+        boolean startMonth = m.from.getDayOfMonth() != 1 || m.from.equals(startDate);
+        String startLbl = startMonth ? "Start " + Fmt.dateOf(m.from) : "Monatsanfang";
+        tvBalanceInfo.setText(
+                pad(startLbl) + Fmt.signed(m.startBal) + " h\n"
+                        + pad("Überstunden Monat") + Fmt.signed(m.diff) + " h\n"
+                        + pad(current ? "= Stand heute" : "= Monatsende") + Fmt.signed(m.endBal) + " h");
+
+        // Aufteilung nach Zuschlag
+        Work.OtSplit o = m.ot;
+        if (o.total() > 0) {
+            StringBuilder sb = new StringBuilder("Überstunden nach Zuschlag:");
+            appendSplit(sb, "Mo–Fr", o.week, sur.week);
+            appendSplit(sb, "Sa bis " + Fmt.hoursInput(sur.satLowMin) + " h", o.satLow, sur.satLow);
+            appendSplit(sb, "Sa danach", o.satHigh, sur.satHigh);
+            appendSplit(sb, "Sonntag", o.sun, sur.sun);
+            appendSplit(sb, "Feiertag", o.hol, sur.hol);
+            sb.append(String.format(Locale.GERMANY, "\n%s Ø %.1f %%", pad("Durchschnitt"), o.averagePct(sur)));
+            tvOtSplit.setText(sb.toString());
+        } else {
+            tvOtSplit.setText("Noch keine Überstunden in diesem Monat.");
         }
-        tvAdjustments.setText(sb.toString());
+
+        // Auszahlung
+        double rate = Prefs.hourlyRate(a);
+        StringBuilder p = new StringBuilder();
+        if (m.payout > 0) {
+            double euro = Work.payoutEuro(m, rate, sur);
+            double h = m.payout / (double) Work.HOUR;
+            p.append(current ? "Bleibt es so, werden am Monatsende ausgezahlt:\n" : "Ausgezahlt am Monatsende:\n");
+            p.append(Fmt.hm(m.payout)).append(" h über ").append(limitTxt);
+            if (rate > 0) {
+                p.append(" → ca. ").append(Fmt.euro(euro)).append(" brutto")
+                        .append(String.format(Locale.GERMANY, "\n%.2f h × %s × (1 + %.1f %% Zuschlag)",
+                                h, Fmt.euro(rate), o.averagePct(sur)));
+            } else {
+                p.append("\n→ Stundenlohn unter ⚙ Einstellungen eintragen, dann steht hier der Betrag.");
+            }
+            p.append("\nNächster Monat startet mit ").append(Fmt.signed(m.carry)).append(" h.");
+        } else {
+            long missing = limit - m.endBal;
+            p.append(future ? "Noch keine Einträge." : "Keine Auszahlung" + (current ? " (bisher)." : "."))
+                    .append("\nAuszahlung ab ").append(limitTxt).append(" – es fehlen noch ")
+                    .append(Fmt.hm(missing)).append(" h.");
+            if (!current && !future) {
+                p.append("\nNächster Monat startet mit ").append(Fmt.signed(m.carry)).append(" h.");
+            }
+        }
+        tvPayout.setText(p.toString());
+    }
+
+    private static void appendSplit(StringBuilder sb, String label, long ms, int pct) {
+        if (ms <= 0) return;
+        sb.append('\n').append(pad(label)).append(String.format(Locale.GERMANY, "%6s h  %3d %%", Fmt.hm(ms), pct));
+    }
+
+    /** Text auf feste Breite auffüllen (für saubere Spalten in Monospace). */
+    private static String pad(String s) {
+        StringBuilder b = new StringBuilder(s);
+        while (b.length() < 18) b.append(' ');
+        return b.toString();
     }
 
     // =====================================================================
@@ -370,102 +399,6 @@ final class OvertimeTab {
     }
 
     // =====================================================================
-    // Auszahlung
-    // =====================================================================
-
-    private void bookPayout() {
-        List<Work.Day> all = Work.days(Prefs.history(a), Prefs.sollMin(a));
-        long bal = Work.balanceMs(all, Prefs.startBalanceMin(a), Prefs.adjustments(a));
-        long pay = Work.payoutMs(bal, Prefs.otLimitMin(a));
-        if (pay <= 0) return;
-        final int payMin = (int) (pay / Work.MIN);
-        final double euro = Work.payoutEuro(pay, Prefs.hourlyRate(a), Prefs.surchargePct(a));
-        new AlertDialog.Builder(a)
-                .setTitle("Auszahlung verbuchen?")
-                .setMessage(Fmt.hm(pay) + " h (ca. " + Fmt.euro(euro) + " brutto) werden vom Konto abgezogen, "
-                        + "z. B. wenn sie mit dem Gehalt ausgezahlt wurden.\n\nKontostand danach: "
-                        + Fmt.signed(bal - payMin * Work.MIN) + " h")
-                .setPositiveButton("Verbuchen", (d, w) -> {
-                    Prefs.addAdjustment(a, new Prefs.Adjustment(System.currentTimeMillis(), -payMin,
-                            "Auszahlung ca. " + Fmt.euro(euro)));
-                    refresh();
-                })
-                .setNegativeButton("Abbrechen", null)
-                .show();
-    }
-
-    private void deleteLastAdjustment() {
-        List<Prefs.Adjustment> adj = Prefs.adjustments(a);
-        if (adj.isEmpty()) {
-            toast("Keine Buchungen vorhanden.");
-            return;
-        }
-        Prefs.Adjustment x = adj.get(adj.size() - 1);
-        new AlertDialog.Builder(a)
-                .setTitle("Letzte Buchung löschen?")
-                .setMessage(Fmt.date(x.time) + "  " + Fmt.signed(x.minutes * Work.MIN) + " h  " + x.note)
-                .setPositiveButton("Löschen", (d, w) -> {
-                    Prefs.removeLastAdjustment(a);
-                    refresh();
-                })
-                .setNegativeButton("Abbrechen", null)
-                .show();
-    }
-
-    // =====================================================================
-    // Einstellungen
-    // =====================================================================
-
-    private void fillSettings() {
-        etSoll.setText(Fmt.hoursInput(Prefs.sollMin(a)));
-        etStartBal.setText(Fmt.hoursInput(Prefs.startBalanceMin(a)));
-        etLimit.setText(Fmt.hoursInput(Prefs.otLimitMin(a)));
-        double rate = Prefs.hourlyRate(a);
-        etRate.setText(rate > 0 ? String.format(Locale.GERMANY, "%.2f", rate) : "");
-        etSurcharge.setText(String.valueOf(Prefs.surchargePct(a)));
-    }
-
-    private void saveSettings() {
-        try {
-            int soll = hoursToMin(etSoll, "Sollarbeitszeit", 0.5, 24);
-            int startBal = hoursToMin(etStartBal, "Übertrag", -2000, 2000);
-            int limit = hoursToMin(etLimit, "Auszahlungsgrenze", 0, 2000);
-            String rateTxt = etRate.getText().toString().trim();
-            double rate = rateTxt.isEmpty() ? 0 : num(rateTxt, "Stundenlohn");
-            if (rate < 0 || rate > 1000) throw new IllegalArgumentException("Stundenlohn: 0 bis 1000 €.");
-            String sTxt = etSurcharge.getText().toString().trim();
-            int pct = sTxt.isEmpty() ? 0 : (int) Math.round(num(sTxt, "Zuschlag"));
-            if (pct < 0 || pct > 300) throw new IllegalArgumentException("Zuschlag: 0 bis 300 %.");
-            Prefs.saveOvertimeSettings(a, soll, startBal, limit, rate, pct);
-        } catch (IllegalArgumentException ex) {
-            toast(ex.getMessage());
-            return;
-        }
-        fillSettings();
-        refresh();
-        toast("Gespeichert ✔");
-    }
-
-    private static int hoursToMin(EditText f, String name, double min, double max) {
-        String t = f.getText().toString().trim();
-        if (t.isEmpty()) t = "0";
-        double h = num(t, name);
-        if (h < min || h > max) {
-            throw new IllegalArgumentException(name + ": erlaubt " + Fmt.hoursInput((int) (min * 60))
-                    + " bis " + Fmt.hoursInput((int) (max * 60)) + " Stunden.");
-        }
-        return (int) Math.round(h * 60);
-    }
-
-    private static double num(String text, String name) {
-        try {
-            return Double.parseDouble(text.replace(',', '.'));
-        } catch (NumberFormatException e) {
-            throw new IllegalArgumentException(name + ": bitte eine Zahl eingeben.");
-        }
-    }
-
-    // =====================================================================
     // Export
     // =====================================================================
 
@@ -493,9 +426,18 @@ final class OvertimeTab {
                         .append(e.isFreeDay() ? "Überstundenabbau" : e.source).append('\n');
             }
         }
-        long bal = Work.balanceMs(days, Prefs.startBalanceMin(a), Prefs.adjustments(a));
-        csv.append("\nÜberstundenkonto;;;;")
-                .append(String.format(Locale.GERMANY, "%.2f", bal / (double) Work.HOUR)).append('\n');
+        Work.Surcharges sur = Prefs.surcharges(a);
+        List<Work.Month> months = Work.account(days, Prefs.otStartDate(a),
+                Prefs.startBalanceMin(a) * Work.MIN, Prefs.otLimitMin(a) * Work.MIN, YearMonth.now(), sur);
+        csv.append("\nMonat;Anfang h;Überstunden h;Ende h;Ausgezahlt h;Ø Zuschlag %;Betrag brutto €\n");
+        for (Work.Month m : months) {
+            csv.append(m.ym).append(';')
+                    .append(String.format(Locale.GERMANY, "%.2f;%.2f;%.2f;%.2f;%.1f;%.2f",
+                            m.startBal / (double) Work.HOUR, m.diff / (double) Work.HOUR,
+                            m.endBal / (double) Work.HOUR, m.payout / (double) Work.HOUR,
+                            m.ot.averagePct(sur), Work.payoutEuro(m, Prefs.hourlyRate(a), sur)))
+                    .append('\n');
+        }
 
         Intent send = new Intent(Intent.ACTION_SEND);
         send.setType("text/plain");
