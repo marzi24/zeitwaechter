@@ -48,7 +48,7 @@ final class SettingsTab {
     private final MainActivity a;
 
     private final TextView tvPerms, tvGeofence, tvHolidayList, tvVersion, tvPauseExample;
-    private final EditText etLat, etLon, etRadius, etOffset, etMaxHours, etBreak, etWarn, etResume;
+    private final EditText etLat, etLon, etRadius, etOffset, etOffsetOut, etMaxHours, etBreak, etWarn, etResume;
     private final EditText etSoll, etPauseAfter, etStartBal, etLimit, etRate;
     private final EditText etSurWeek, etSurSatLow, etSatLowHours, etSurSatHigh, etSurSun, etSurHol, etExtraHol;
     private final Switch swEnabled;
@@ -68,6 +68,7 @@ final class SettingsTab {
         etLon = a.findViewById(R.id.etLon);
         etRadius = a.findViewById(R.id.etRadius);
         etOffset = a.findViewById(R.id.etOffset);
+        etOffsetOut = a.findViewById(R.id.etOffsetOut);
         etMaxHours = a.findViewById(R.id.etMaxHours);
         etBreak = a.findViewById(R.id.etBreak);
         etWarn = a.findViewById(R.id.etWarn);
@@ -223,6 +224,7 @@ final class SettingsTab {
         swEnabled.setChecked(Prefs.trackingEnabled(a));
         etRadius.setText(String.valueOf(Prefs.radius(a)));
         etOffset.setText(String.valueOf(Prefs.offsetMin(a)));
+        etOffsetOut.setText(String.valueOf(Prefs.offsetOutMin(a)));
         etMaxHours.setText(Fmt.hoursFromMinutes(Prefs.maxWorkMin(a)));
         etBreak.setText(String.valueOf(Prefs.breakMin(a)));
         etWarn.setText(Prefs.warnList(a));
@@ -257,7 +259,8 @@ final class SettingsTab {
             // Erkennung & Erinnerungen
             double[] coords = readCoordFields();
             int radius = parseInt(etRadius, "Radius", 50, 2000);
-            int offset = parseInt(etOffset, "Minuten bis zur Stempeluhr", 0, 30);
+            int offset = parseInt(etOffset, "Minuten vom Ankommen bis zur Stempeluhr", 0, 30);
+            int offsetOut = parseInt(etOffsetOut, "Minuten vom Ausstempeln bis zum Auto", 0, 30);
             int maxWork = hoursToMin(etMaxHours, "Höchstarbeitszeit", 1, 16);
             int brk = parseInt(etBreak, "Pause", 0, 180);
             int resume = parseInt(etResume, "Fortsetzen-Zeit", 0, 240);
@@ -292,6 +295,7 @@ final class SettingsTab {
 
             // Alles gültig -> speichern
             Prefs.saveSettings(a, radius, offset, maxWork, brk, resume, warn, swEnabled.isChecked());
+            Prefs.saveOffsetOut(a, offsetOut);
             if (coords != null) Prefs.setWorkLocation(a, coords[0], coords[1]);
             else Prefs.clearWorkLocation(a);
             Prefs.saveOvertimeSettings(a, soll, pauseAfter, startBal, startDate, limit, rate);

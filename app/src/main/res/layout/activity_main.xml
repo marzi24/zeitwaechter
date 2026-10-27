@@ -511,10 +511,19 @@
 
                     <TextView
                         style="@style/Label"
-                        android:text="Minuten vom Ankommen bis zur Stempeluhr" />
+                        android:text="Morgens: Minuten vom Ankommen bis zum Einstempeln (Parken + Laufen)" />
 
                     <EditText
                         android:id="@+id/etOffset"
+                        style="@style/Field"
+                        android:inputType="number" />
+
+                    <TextView
+                        style="@style/Label"
+                        android:text="Abends: Minuten vom Ausstempeln bis zum Wegfahren (Laufen zum Auto)" />
+
+                    <EditText
+                        android:id="@+id/etOffsetOut"
                         style="@style/Field"
                         android:inputType="number" />
 

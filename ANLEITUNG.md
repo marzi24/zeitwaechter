@@ -15,7 +15,7 @@ deine private Erinnerungshilfe. Alle Daten bleiben auf dem Handy.
 | Während der Arbeit | Dauerhafte Benachrichtigung mit **Countdown** bis zur spätesten Ausstempelzeit |
 | 30, 15 und 5 Min. vor der Grenze | **Warnung** mit Vibration (laut, auch im Energiesparmodus) |
 | Grenze erreicht | Letzte Warnung „jetzt ausstempeln!“ |
-| Du verlässt den Arbeitsort | Sitzung endet automatisch (Gehen-Zeit = Verlassen − 2 Min.) und landet im Verlauf |
+| Du verlässt den Arbeitsort | Sitzung endet automatisch (Gehen-Zeit = Verlassen − eingestellte Minuten, Standard 2) und landet im Verlauf |
 
 **So wird die späteste Ausstempelzeit berechnet:**
 
@@ -130,7 +130,8 @@ Solange etwas fehlt, zeigt der Reiter „Heute“ einen gelben Hinweis, der dire
 | Feld | Standard | Erklärung |
 |---|---|---|
 | Radius | 150 m | Größe des Kreises. Sollte den Parkplatz umfassen. 100–300 m ist gut. Zu klein = unzuverlässig. |
-| Minuten bis zur Stempeluhr | 2 | Parken + Laufen. Lieber etwas **knapp** wählen, dann kommt die Warnung eher zu früh als zu spät. |
+| Morgens: Ankommen → Einstempeln | 2 | Parken + Laufen zur Stempeluhr. Lieber etwas **knapp** wählen, dann kommt die Warnung eher zu früh als zu spät. |
+| Abends: Ausstempeln → Wegfahren | 2 | Laufen zum Auto + Losfahren. Wird beim Verlassen des Arbeitsorts von der Uhrzeit abgezogen, damit die Gehen-Zeit zur Stempeluhr passt. |
 | Höchstarbeitszeit | 10 | In Stunden, ohne Pause. Auch Kommazahlen, z. B. `9,5`. |
 | Warnungen | 30, 15, 5 | Wann vor der Grenze gewarnt wird. Beliebig viele, mit Komma. |
 | Fortsetzen innerhalb von | 45 | Kommst du so schnell zurück, läuft die alte Sitzung weiter. |

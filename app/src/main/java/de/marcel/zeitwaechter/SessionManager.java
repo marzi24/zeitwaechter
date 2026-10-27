@@ -88,7 +88,7 @@ public final class SessionManager {
     /** Arbeitsort verlassen. */
     public static void onLeave(Context c, long whenMs) {
         if (!Prefs.active(c)) return;
-        long stampOut = whenMs - Prefs.offsetMin(c) * 60_000L;
+        long stampOut = whenMs - Prefs.offsetOutMin(c) * 60_000L;
         long start = Prefs.start(c);
         if (stampOut < start) stampOut = start;
         end(c, stampOut, false);

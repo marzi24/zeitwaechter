@@ -27,6 +27,7 @@ public final class Prefs {
     private static final String K_LON = "work_lon";
     private static final String K_RADIUS = "radius_m";
     private static final String K_OFFSET = "offset_min";
+    private static final String K_OFFSET_OUT = "offset_out_min";
     private static final String K_MAX_WORK = "max_work_min";
     private static final String K_BREAK = "break_min";
     private static final String K_WARN = "warn_list";
@@ -142,6 +143,15 @@ public final class Prefs {
     /** Minuten vom Erreichen des Ortes bis zum Einstempeln (Parken + Laufen). */
     public static int offsetMin(Context c) {
         return sp(c).getInt(K_OFFSET, 2);
+    }
+
+    /** Minuten vom Ausstempeln bis zum Verlassen des Arbeitsorts (Laufen zum Auto + Losfahren). */
+    public static int offsetOutMin(Context c) {
+        return sp(c).getInt(K_OFFSET_OUT, offsetMin(c));
+    }
+
+    public static void saveOffsetOut(Context c, int minutes) {
+        sp(c).edit().putInt(K_OFFSET_OUT, minutes).commit();
     }
 
     /** Maximale Arbeitszeit in Minuten (ohne Pause), Standard 10 h. */
