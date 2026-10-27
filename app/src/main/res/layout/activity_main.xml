@@ -538,6 +538,24 @@
 
                     <TextView
                         style="@style/Label"
+                        android:text="Späteste Ausstempel-Uhrzeit (z. B. 20:45, leer = keine)" />
+
+                    <EditText
+                        android:id="@+id/etLatestOut"
+                        style="@style/Field"
+                        android:hint="20:45"
+                        android:inputType="time" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="Es gilt immer die frühere Grenze: 10 h + Pause oder diese Uhrzeit. Beginnt ein Dienst erst nach dieser Uhrzeit (Nachtdienst), gilt nur die 10-h-Grenze."
+                        android:textColor="@color/text_secondary"
+                        android:textSize="13sp" />
+
+                    <TextView
+                        style="@style/Label"
                         android:text="Warnungen (Minuten vorher, mit Komma getrennt)" />
 
                     <EditText

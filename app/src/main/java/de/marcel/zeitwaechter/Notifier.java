@@ -91,6 +91,9 @@ final class Notifier {
             text += " · " + (di.earlierSessions + 1) + ". Einsatz heute, vorher "
                     + Fmt.duration(di.earlierNet) + " netto";
         }
+        if (di.byClock) {
+            text += " · Grenze: späteste Ausstempelzeit " + Fmt.time(di.clockDeadline) + " Uhr";
+        }
 
         Notification n = new Notification.Builder(c, CH_STATUS)
                 .setSmallIcon(R.drawable.ic_stat_clock)
@@ -152,12 +155,22 @@ final class Notifier {
 
     /** Die wichtige Warnung vor der Grenze. */
     static void showWarning(Context c, int minutesLeft, long deadline) {
-        String limit = Fmt.hoursFromMinutes(Prefs.maxWorkMin(c)) + "-h-Grenze";
-        String title = minutesLeft > 0
-                ? "Noch " + minutesLeft + " Min. bis zur " + limit + "!"
-                : limit + " erreicht – jetzt ausstempeln!";
         Work.DayInfo di = SessionManager.dayInfo(c, Prefs.start(c));
-        String text = di.earlierSessions > 0
+        String title;
+        if (di.byClock) {
+            String clock = Fmt.time(di.clockDeadline) + " Uhr";
+            title = minutesLeft > 0
+                    ? "Noch " + minutesLeft + " Min. bis " + clock + "!"
+                    : clock + " erreicht – jetzt ausstempeln!";
+        } else {
+            String limit = Fmt.hoursFromMinutes(Prefs.maxWorkMin(c)) + "-h-Grenze";
+            title = minutesLeft > 0
+                    ? "Noch " + minutesLeft + " Min. bis zur " + limit + "!"
+                    : limit + " erreicht – jetzt ausstempeln!";
+        }
+        String text = di.byClock
+                ? "Spätestens um " + Fmt.time(di.clockDeadline) + " ausstempeln – später ist nicht erlaubt."
+                : di.earlierSessions > 0
                 ? "Spätestens um " + Fmt.timeSmart(deadline) + " ausstempeln. Die "
                         + Fmt.duration(di.earlierNet) + " aus deinen früheren Einsätzen heute sind eingerechnet."
                 : "Spätestens um " + Fmt.timeSmart(deadline) + " ausstempeln (inkl. "

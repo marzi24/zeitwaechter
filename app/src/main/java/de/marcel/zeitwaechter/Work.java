@@ -84,8 +84,27 @@ final class Work {
         long remainingNet;
         /** Pause, die in diesem Einsatz noch dazugerechnet wird. */
         long extraBreak;
-        /** Späteste Ausstempelzeit dieses Einsatzes. */
+        /** Späteste Ausstempelzeit dieses Einsatzes (die frühere der beiden Grenzen). */
         long deadline;
+        /** Grenze nur nach Höchstarbeitszeit (z. B. 10 h + Pause). */
+        long workDeadline;
+        /** Feste Uhrzeit-Grenze (z. B. 20:45) oder 0, wenn ausgeschaltet. */
+        long clockDeadline;
+        /** true, wenn die Uhrzeit-Grenze früher greift als die 10-h-Grenze. */
+        boolean byClock;
+    }
+
+    /**
+     * Nächster Zeitpunkt ab {@code start}, an dem die Uhr {@code minuteOfDay} zeigt.
+     * Beginnt man vor 20:45, ist es 20:45 am selben Tag; beginnt man danach (Nachtdienst),
+     * ist es 20:45 am nächsten Tag – dann bremst diese Grenze praktisch nicht.
+     */
+    static long nextClockTime(long start, int minuteOfDay) {
+        java.time.ZonedDateTime z = Fmt.zoned(start);
+        java.time.ZonedDateTime cap = z.toLocalDate().atTime(minuteOfDay / 60, minuteOfDay % 60)
+                .atZone(z.getZone());
+        if (!cap.toInstant().isAfter(z.toInstant())) cap = cap.plusDays(1);
+        return cap.toInstant().toEpochMilli();
     }
 
     /**
@@ -125,7 +144,15 @@ final class Work {
             d.remainingNet = Math.max(0, max - d.earlierNet);
             d.extraBreak = Math.max(0, brk - d.earlierPause - d.gaps);
         }
-        d.deadline = start + d.remainingNet + d.extraBreak;
+        d.workDeadline = start + d.remainingNet + d.extraBreak;
+        d.deadline = d.workDeadline;
+        if (r.latestOutMin >= 0) {
+            d.clockDeadline = nextClockTime(start, r.latestOutMin);
+            if (d.clockDeadline < d.workDeadline) {
+                d.deadline = d.clockDeadline;
+                d.byClock = true;
+            }
+        }
         return d;
     }
 
@@ -214,6 +241,7 @@ final class Work {
         int sollMin = 480;      // Sollzeit pro Werktag Mo–Fr
         int pauseAfterMin = 360; // Pause wird ab 6 h Anwesenheit abgezogen …
         int pauseMin = 45;      // … höchstens 45 Minuten
+        int latestOutMin = -1;  // späteste Ausstempel-Uhrzeit in Minuten ab Mitternacht (20:45 = 1245), -1 = aus
         int week = 25;          // Montag–Freitag
         int satLow = 25;        // Samstag, die ersten satLowMin Minuten Überstunden
         int satLowMin = 120;    // = 2 Stunden

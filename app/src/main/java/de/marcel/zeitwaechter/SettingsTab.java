@@ -48,7 +48,7 @@ final class SettingsTab {
     private final MainActivity a;
 
     private final TextView tvPerms, tvGeofence, tvHolidayList, tvVersion, tvPauseExample;
-    private final EditText etLat, etLon, etRadius, etOffset, etOffsetOut, etMaxHours, etBreak, etWarn, etResume;
+    private final EditText etLat, etLon, etRadius, etOffset, etOffsetOut, etMaxHours, etLatestOut, etBreak, etWarn, etResume;
     private final EditText etSoll, etPauseAfter, etStartBal, etLimit, etRate;
     private final EditText etSurWeek, etSurSatLow, etSatLowHours, etSurSatHigh, etSurSun, etSurHol, etExtraHol;
     private final Switch swEnabled;
@@ -70,6 +70,7 @@ final class SettingsTab {
         etOffset = a.findViewById(R.id.etOffset);
         etOffsetOut = a.findViewById(R.id.etOffsetOut);
         etMaxHours = a.findViewById(R.id.etMaxHours);
+        etLatestOut = a.findViewById(R.id.etLatestOut);
         etBreak = a.findViewById(R.id.etBreak);
         etWarn = a.findViewById(R.id.etWarn);
         etResume = a.findViewById(R.id.etResume);
@@ -226,6 +227,8 @@ final class SettingsTab {
         etOffset.setText(String.valueOf(Prefs.offsetMin(a)));
         etOffsetOut.setText(String.valueOf(Prefs.offsetOutMin(a)));
         etMaxHours.setText(Fmt.hoursFromMinutes(Prefs.maxWorkMin(a)));
+        int lo = Prefs.latestOutMin(a);
+        etLatestOut.setText(lo >= 0 ? String.format(Locale.GERMANY, "%02d:%02d", lo / 60, lo % 60) : "");
         etBreak.setText(String.valueOf(Prefs.breakMin(a)));
         etWarn.setText(Prefs.warnList(a));
         etResume.setText(String.valueOf(Prefs.resumeMin(a)));
@@ -262,6 +265,7 @@ final class SettingsTab {
             int offset = parseInt(etOffset, "Minuten vom Ankommen bis zur Stempeluhr", 0, 30);
             int offsetOut = parseInt(etOffsetOut, "Minuten vom Ausstempeln bis zum Auto", 0, 30);
             int maxWork = hoursToMin(etMaxHours, "Höchstarbeitszeit", 1, 16);
+            int latestOut = parseClock(etLatestOut.getText().toString());
             int brk = parseInt(etBreak, "Pause", 0, 180);
             int resume = parseInt(etResume, "Fortsetzen-Zeit", 0, 240);
             String warn = etWarn.getText().toString().trim();
@@ -296,6 +300,7 @@ final class SettingsTab {
             // Alles gültig -> speichern
             Prefs.saveSettings(a, radius, offset, maxWork, brk, resume, warn, swEnabled.isChecked());
             Prefs.saveOffsetOut(a, offsetOut);
+            Prefs.saveLatestOut(a, latestOut);
             if (coords != null) Prefs.setWorkLocation(a, coords[0], coords[1]);
             else Prefs.clearWorkLocation(a);
             Prefs.saveOvertimeSettings(a, soll, pauseAfter, startBal, startDate, limit, rate);
@@ -549,6 +554,25 @@ final class SettingsTab {
             throw new IllegalArgumentException(name + ": erlaubt ist " + min + " bis " + max + ".");
         }
         return v;
+    }
+
+    /**
+     * Uhrzeit wie "20:45", "20.45" oder "2045" in Minuten ab Mitternacht. Leer = -1 (keine Grenze).
+     */
+    static int parseClock(String text) {
+        String t = text.trim();
+        if (t.isEmpty()) return -1;
+        Matcher m = Pattern.compile("^(\\d{1,2})[:.,]?(\\d{2})$").matcher(t);
+        if (!m.find()) {
+            Matcher h = Pattern.compile("^(\\d{1,2})$").matcher(t);
+            if (!h.find()) throw new IllegalArgumentException("Späteste Uhrzeit: bitte z. B. 20:45 eingeben (oder leer lassen).");
+            m = Pattern.compile("^(\\d{1,2})()$").matcher(t);
+            m.find();
+        }
+        int hh = Integer.parseInt(m.group(1));
+        int mm = m.group(2).isEmpty() ? 0 : Integer.parseInt(m.group(2));
+        if (hh > 23 || mm > 59) throw new IllegalArgumentException("Späteste Uhrzeit: ungültige Uhrzeit.");
+        return hh * 60 + mm;
     }
 
     /** Stunden-Feld (auch mit Komma) in Minuten umrechnen und prüfen. */

@@ -295,7 +295,13 @@ public class MainActivity extends Activity {
             long gross = Math.max(0, now - start);
             String worked = "Anwesend: " + Fmt.duration(gross)
                     + "  ·  netto ca. " + Fmt.duration(Work.netForGross(gross, Prefs.rules(this)));
-            if (di.earlierSessions > 0) {
+            if (di.byClock) {
+                worked += "\nGrenze = späteste Ausstempelzeit " + Fmt.time(di.clockDeadline) + " Uhr"
+                        + " (10-h-Grenze wäre " + Fmt.timeSmart(di.workDeadline) + ")";
+                if (di.earlierSessions > 0) {
+                    worked += "\nFrühere Einsätze heute: " + Fmt.duration(di.earlierNet) + " netto";
+                }
+            } else if (di.earlierSessions > 0) {
                 worked += "\nFrühere Einsätze heute: " + Fmt.duration(di.earlierNet) + " netto"
                         + "\nGrenze = Start + noch " + Fmt.duration(di.remainingNet) + " Arbeit"
                         + (di.extraBreak > 0 ? " + " + (di.extraBreak / Work.MIN) + " Min. Pause" : "")
@@ -310,9 +316,12 @@ public class MainActivity extends Activity {
             if (di.earlierSessions > 0) {
                 tvStatus.setText("Ausgestempelt. Heute schon " + Fmt.duration(di.earlierNet) + " netto gearbeitet"
                         + (di.earlierSessions > 1 ? " (" + di.earlierSessions + " Einsätze)." : "."));
-                tvDeadline.setText(di.remainingNet > 0
-                        ? "Noch möglich: " + Fmt.durationWords(di.remainingNet)
-                        : Fmt.hoursFromMinutes(Prefs.maxWorkMin(this)) + " h erreicht");
+                long possible = Math.max(0, di.deadline - now - di.extraBreak);
+                tvDeadline.setText(possible > 0
+                        ? "Noch möglich: " + Fmt.durationWords(Math.min(possible, di.remainingNet))
+                        + (di.byClock ? " (bis " + Fmt.time(di.clockDeadline) + ")" : "")
+                        : (di.byClock ? Fmt.time(di.clockDeadline) + " Uhr erreicht"
+                                : Fmt.hoursFromMinutes(Prefs.maxWorkMin(this)) + " h erreicht"));
                 tvRemaining.setText("Nochmal arbeiten? „Erneut einstempeln“ tippen – die Grenze wird automatisch angepasst.");
                 tvRemaining.setTextColor(getColor(di.remainingNet > 0 ? R.color.text_secondary : R.color.danger));
             } else {

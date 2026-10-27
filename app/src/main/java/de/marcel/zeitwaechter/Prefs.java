@@ -48,6 +48,7 @@ public final class Prefs {
     // Überstunden
     private static final String K_SOLL = "soll_min_day";
     private static final String K_PAUSE_AFTER = "pause_after_min";
+    private static final String K_LATEST_OUT = "latest_out_min";
     private static final String K_START_BAL = "start_balance_min";
     private static final String K_OT_LIMIT = "ot_limit_min";
     private static final String K_RATE = "hourly_rate";
@@ -148,6 +149,15 @@ public final class Prefs {
     /** Minuten vom Ausstempeln bis zum Verlassen des Arbeitsorts (Laufen zum Auto + Losfahren). */
     public static int offsetOutMin(Context c) {
         return sp(c).getInt(K_OFFSET_OUT, offsetMin(c));
+    }
+
+    /** Späteste Ausstempel-Uhrzeit in Minuten ab Mitternacht (Standard 20:45), -1 = keine. */
+    public static int latestOutMin(Context c) {
+        return sp(c).getInt(K_LATEST_OUT, 20 * 60 + 45);
+    }
+
+    public static void saveLatestOut(Context c, int minuteOfDay) {
+        sp(c).edit().putInt(K_LATEST_OUT, minuteOfDay).commit();
     }
 
     public static void saveOffsetOut(Context c, int minutes) {
@@ -401,6 +411,7 @@ public final class Prefs {
         s.sollMin = p.getInt(K_SOLL, 480);
         s.pauseAfterMin = p.getInt(K_PAUSE_AFTER, 360);
         s.pauseMin = p.getInt(K_BREAK, 45);
+        s.latestOutMin = p.getInt(K_LATEST_OUT, 20 * 60 + 45);
         s.week = p.getInt(K_SUR_WEEK, 25);
         s.satLow = p.getInt(K_SUR_SAT_LOW, 25);
         s.satLowMin = p.getInt(K_SAT_LOW_MIN, 120);

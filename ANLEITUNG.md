@@ -24,7 +24,15 @@ späteste Ausstempelzeit = geschätzte Einstempelzeit + 10 h Arbeit + 45 Min. Pa
 Beispiel:  Ankunft Parkplatz 06:28  →  eingestempelt ca. 06:30  →  spätestens raus 17:15
 ```
 
-Alle Werte (2 Min., 10 h, 45 Min., Warnzeiten) kannst du in der App ändern.
+Zusätzlich gilt eine **späteste Ausstempel-Uhrzeit (Standard 20:45)**. Liegt sie früher als die
+10-h-Grenze, warnt die App vor 20:45:
+
+```
+Beispiel: Start 11:00  →  10 h + 45 Min. wären 21:45  →  spätestens raus 20:45
+          Warnungen um 20:15, 20:30, 20:40 und 20:45
+```
+
+Alle Werte (2 Min., 10 h, 45 Min., 20:45, Warnzeiten) kannst du unter ⚙ ändern.
 
 **Gut zu wissen:**
 - Funktioniert auch über Mitternacht (Nachtdienst): Dann steht z. B. „09:01 (So. 25.10.)“ da.
@@ -133,6 +141,7 @@ Solange etwas fehlt, zeigt der Reiter „Heute“ einen gelben Hinweis, der dire
 | Morgens: Ankommen → Einstempeln | 2 | Parken + Laufen zur Stempeluhr. Lieber etwas **knapp** wählen, dann kommt die Warnung eher zu früh als zu spät. |
 | Abends: Ausstempeln → Wegfahren | 2 | Laufen zum Auto + Losfahren. Wird beim Verlassen des Arbeitsorts von der Uhrzeit abgezogen, damit die Gehen-Zeit zur Stempeluhr passt. |
 | Höchstarbeitszeit | 10 | In Stunden, ohne Pause. Auch Kommazahlen, z. B. `9,5`. |
+| Späteste Ausstempel-Uhrzeit | 20:45 | Später darf nicht ausgestempelt werden. Es gilt immer die **frühere** Grenze: 10 h + Pause oder diese Uhrzeit. Leer lassen = keine Uhrzeit-Grenze. Beginnt ein Dienst erst nach 20:45 (Nachtdienst), gilt nur die 10-h-Grenze. |
 | Warnungen | 30, 15, 5 | Wann vor der Grenze gewarnt wird. Beliebig viele, mit Komma. |
 | Fortsetzen innerhalb von | 45 | Kommst du so schnell zurück, läuft die alte Sitzung weiter. |
 
