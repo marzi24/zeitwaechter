@@ -294,7 +294,7 @@ public class MainActivity extends Activity {
 
             long gross = Math.max(0, now - start);
             String worked = "Anwesend: " + Fmt.duration(gross)
-                    + "  ·  netto ca. " + Fmt.duration(Fmt.netMs(gross));
+                    + "  ·  netto ca. " + Fmt.duration(Work.netForGross(gross, Prefs.rules(this)));
             if (di.earlierSessions > 0) {
                 worked += "\nFrühere Einsätze heute: " + Fmt.duration(di.earlierNet) + " netto"
                         + "\nGrenze = Start + noch " + Fmt.duration(di.remainingNet) + " Arbeit"

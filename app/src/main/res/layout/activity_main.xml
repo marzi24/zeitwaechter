@@ -326,17 +326,38 @@
                         android:lineSpacingExtra="3dp"
                         android:textColor="@color/text"
                         android:textSize="13sp" />
+                </LinearLayout>
+
+                <!-- ============ AUSZAHLUNG (groß) ============ -->
+                <LinearLayout
+                    style="@style/Section"
+                    android:background="@drawable/payout_card"
+                    android:gravity="center_horizontal">
 
                     <TextView
-                        android:id="@+id/tvPayout"
+                        android:id="@+id/tvPayoutTitle"
+                        style="@style/SectionTitle"
+                        android:gravity="center"
+                        android:textColor="@color/on_payout" />
+
+                    <TextView
+                        android:id="@+id/tvPayoutAmount"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="10dp"
-                        android:background="@drawable/payout_bg"
+                        android:gravity="center"
+                        android:textColor="@color/on_payout"
+                        android:textSize="40sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tvPayoutDetail"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:gravity="center"
                         android:lineSpacingExtra="3dp"
-                        android:padding="12dp"
-                        android:textColor="@color/text"
-                        android:textSize="15sp" />
+                        android:textColor="@color/on_payout"
+                        android:textSize="14sp" />
                 </LinearLayout>
 
                 <TextView
@@ -344,7 +365,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
                     android:layout_marginBottom="24dp"
-                    android:text="Soll gilt an jedem Tag mit Eintrag. Tage ohne Eintrag (frei, Urlaub, krank) zählen nicht. Für einen Tag Überstundenabbau „+ Freier Tag“ eintragen. Beträge sind Schätzungen brutto vor Steuern und Abgaben."
+                    android:text="Sollzeit gilt an Tagen Mo–Fr mit Eintrag. Tage ohne Eintrag (frei, Urlaub, krank) zählen nicht. Für einen Tag Überstundenabbau „+ Freier Tag“ eintragen. Beträge sind Schätzungen brutto vor Steuern und Abgaben."
                     android:textColor="@color/text_secondary"
                     android:textSize="12sp" />
             </LinearLayout>
@@ -508,15 +529,6 @@
 
                     <TextView
                         style="@style/Label"
-                        android:text="Pause, die dazugerechnet wird (Minuten)" />
-
-                    <EditText
-                        android:id="@+id/etBreak"
-                        style="@style/Field"
-                        android:inputType="number" />
-
-                    <TextView
-                        style="@style/Label"
                         android:text="Warnungen (Minuten vorher, mit Komma getrennt)" />
 
                     <EditText
@@ -543,12 +555,48 @@
 
                     <TextView
                         style="@style/Label"
-                        android:text="Sollarbeitszeit pro Arbeitstag (Stunden, z. B. 38,5 h ÷ 5 = 7,7)" />
+                        android:text="Sollarbeitszeit pro Tag Mo–Fr (Stunden, z. B. 38,5 h ÷ 5 = 7,7)" />
 
                     <EditText
                         android:id="@+id/etSoll"
                         style="@style/Field"
                         android:inputType="numberDecimal" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="Samstag, Sonntag und Feiertage haben keine Sollzeit – dort zählt jede Stunde als Überstunde."
+                        android:textColor="@color/text_secondary"
+                        android:textSize="13sp" />
+
+                    <TextView
+                        style="@style/Label"
+                        android:layout_marginTop="12dp"
+                        android:text="Pause wird abgezogen ab Anwesenheit von (Stunden)" />
+
+                    <EditText
+                        android:id="@+id/etPauseAfter"
+                        style="@style/Field"
+                        android:inputType="numberDecimal" />
+
+                    <TextView
+                        style="@style/Label"
+                        android:text="Pause höchstens (Minuten)" />
+
+                    <EditText
+                        android:id="@+id/etBreak"
+                        style="@style/Field"
+                        android:inputType="number" />
+
+                    <TextView
+                        android:id="@+id/tvPauseExample"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:lineSpacingExtra="2dp"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="13sp" />
 
                     <TextView
                         style="@style/Label"

@@ -132,7 +132,6 @@ Solange etwas fehlt, zeigt der Reiter „Heute“ einen gelben Hinweis, der dire
 | Radius | 150 m | Größe des Kreises. Sollte den Parkplatz umfassen. 100–300 m ist gut. Zu klein = unzuverlässig. |
 | Minuten bis zur Stempeluhr | 2 | Parken + Laufen. Lieber etwas **knapp** wählen, dann kommt die Warnung eher zu früh als zu spät. |
 | Höchstarbeitszeit | 10 | In Stunden, ohne Pause. Auch Kommazahlen, z. B. `9,5`. |
-| Pause | 45 | Minuten, die zusätzlich eingerechnet werden. |
 | Warnungen | 30, 15, 5 | Wann vor der Grenze gewarnt wird. Beliebig viele, mit Komma. |
 | Fortsetzen innerhalb von | 45 | Kommst du so schnell zurück, läuft die alte Sitzung weiter. |
 
@@ -171,7 +170,7 @@ Genaue Anleitungen pro Modell findest du auf <https://dontkillmyapp.com>.
 - **Zweimal am Tag arbeiten:** Z. B. bis 16:00 gearbeitet und abends um 20:00 nochmal: einfach wieder
   einstempeln (automatisch per Standort oder mit **„Erneut einstempeln“**). Die App rechnet die
   früheren Einsätze desselben Arbeitstags auf die 10-h-Grenze an, und die Zeit dazwischen zählt als Pause.
-  Beispiel: 06:30–16:00 = 9:00 h netto → um 20:00 eingestempelt → **spätestens 21:00 raus**.
+  Beispiel: 06:30–16:00 = 9:30 h anwesend − 45 Min. Pause = 8:45 h netto → um 20:00 eingestempelt → **spätestens 21:15 raus**.
   Als „selber Arbeitstag“ gilt alles, solange dazwischen keine 11 Stunden Ruhezeit lagen.
 - **Nur vorbeigefahren / kein Arbeitstag:** In der Benachrichtigung **„Kein Arbeitstag“** tippen.
 - **Erkennung hat nicht geklappt:** **„Jetzt eingestempelt“** oder **„Startzeit festlegen“** tippen.
@@ -184,7 +183,9 @@ Genaue Anleitungen pro Modell findest du auf <https://dontkillmyapp.com>.
 
 | Feld | Bedeutung |
 |---|---|
-| Sollarbeitszeit pro Arbeitstag | z. B. 38,5 h/Woche ÷ 5 Tage = **7,7** |
+| Sollarbeitszeit pro Tag Mo–Fr | z. B. 38,5 h/Woche ÷ 5 Tage = **7,7**. Samstag, Sonntag und Feiertage haben **keine** Sollzeit – dort ist jede Stunde eine Überstunde. |
+| Pause wird abgezogen ab | **6** Stunden Anwesenheit |
+| Pause höchstens | **45** Minuten |
 | Überstunden zum Start | Dein aktueller Überstundenstand laut Arbeitgeber, z. B. **35** (auch negativ möglich) |
 | Überstunden-Stand gilt ab | Der Tag, ab dem die App rechnet. Einträge davor zählen nicht zum Konto. |
 | Auszahlung am Monatsende ab | **40** – alles darüber wird am Monatsende ausgezahlt |
@@ -199,7 +200,7 @@ Genaue Anleitungen pro Modell findest du auf <https://dontkillmyapp.com>.
 |---|---|
 | Datum | Arbeitstag (bei zwei Einsätzen am Tag zwei Zeilen). **Farbig** = Samstag/Sonntag, **F** = Feiertag |
 | Zeit | Kommen–Gehen, ⁺¹ = Ende am nächsten Tag |
-| Pause | Mit * = automatisch (über 6 h → 30 Min., über 9 h → 45 Min.), ohne * = von dir eingetragen |
+| Pause | Mit * = automatisch (siehe unten), ohne * = von dir eingetragen |
 | Netto | Arbeitszeit ohne Pause |
 | +/− | Überstunden des Tages (Netto − Soll), grün = Plus, rot = Minus |
 
@@ -207,6 +208,17 @@ Genaue Anleitungen pro Modell findest du auf <https://dontkillmyapp.com>.
 - **„+ Eintrag“** → vergessenen Arbeitstag nachtragen.
 - **„+ Freier Tag (Abbau)“** → Tag, an dem du Überstunden abfeierst. Zählt die Sollzeit als Minus.
 - Tage **ohne** Eintrag (frei laut Dienstplan, Urlaub, krank) zählen weder Soll noch Ist.
+
+**So wird die Pause abgezogen** (wie bei deinem Arbeitgeber, einstellbar unter ⚙):
+
+| Anwesend | Pause | Netto |
+|---|---|---|
+| bis 6:00 h | 0 Min. | wie anwesend |
+| 6:32 h | 32 Min. | 6:00 h |
+| ab 6:45 h | 45 Min. | anwesend − 45 Min. |
+
+Es wird also nie mehr abgezogen, als man über 6 h liegt. Gilt pro Einsatz; bei einem zweiten Einsatz
+am selben Tag zählt die Lücke dazwischen als Pause.
 
 **Überstundenkonto – so rechnet die App jeden Monat:**
 
@@ -243,6 +255,8 @@ Konto 35 + 11 = 46 h  →  6 h über 40 h
 ```
 
 Ein Arbeitstag zählt komplett zum Datum, an dem er begonnen hat (wichtig bei Nachtdiensten über Mitternacht).
+**Ganz unten** im Reiter steht der Betrag groß auf einer grünen Karte: im laufenden Monat als
+„Voraussichtliche Auszahlung“ (Stand heute), in vergangenen Monaten als endgültiger Wert.
 Alle Beträge sind **brutto**, vor Steuern und Sozialabgaben.
 
 Mit **„Alle Einträge als CSV teilen“** schickst du dir alles z. B. per Mail und öffnest es in Excel.

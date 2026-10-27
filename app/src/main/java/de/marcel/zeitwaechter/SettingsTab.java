@@ -47,9 +47,9 @@ final class SettingsTab {
 
     private final MainActivity a;
 
-    private final TextView tvPerms, tvGeofence, tvHolidayList, tvVersion;
+    private final TextView tvPerms, tvGeofence, tvHolidayList, tvVersion, tvPauseExample;
     private final EditText etLat, etLon, etRadius, etOffset, etMaxHours, etBreak, etWarn, etResume;
-    private final EditText etSoll, etStartBal, etLimit, etRate;
+    private final EditText etSoll, etPauseAfter, etStartBal, etLimit, etRate;
     private final EditText etSurWeek, etSurSatLow, etSatLowHours, etSurSatHigh, etSurSun, etSurHol, etExtraHol;
     private final Switch swEnabled;
     private final Spinner spState;
@@ -62,6 +62,7 @@ final class SettingsTab {
         tvGeofence = a.findViewById(R.id.tvGeofence);
         tvHolidayList = a.findViewById(R.id.tvHolidayList);
         tvVersion = a.findViewById(R.id.tvVersion);
+        tvPauseExample = a.findViewById(R.id.tvPauseExample);
 
         etLat = a.findViewById(R.id.etLat);
         etLon = a.findViewById(R.id.etLon);
@@ -74,6 +75,7 @@ final class SettingsTab {
         swEnabled = a.findViewById(R.id.swEnabled);
 
         etSoll = a.findViewById(R.id.etSoll);
+        etPauseAfter = a.findViewById(R.id.etPauseAfter);
         etStartBal = a.findViewById(R.id.etStartBal);
         etLimit = a.findViewById(R.id.etLimit);
         etRate = a.findViewById(R.id.etRate);
@@ -187,6 +189,19 @@ final class SettingsTab {
         btnStartDate.setText("Überstunden-Stand gilt ab:  " + Fmt.dateOf(startDate) + "  (ändern)");
     }
 
+    /** Zeigt an Beispielen, wie die Pause abgezogen wird. */
+    private void showPauseExample(Work.Rules r) {
+        long after = r.pauseAfterMin * Work.MIN;
+        long full = after + r.pauseMin * Work.MIN;
+        long mid = after + Math.min(r.pauseMin, 32) * Work.MIN;
+        tvPauseExample.setText("So wird gerechnet:\n"
+                + "bis " + Fmt.hm(after) + " h anwesend → keine Pause\n"
+                + Fmt.hm(mid) + " h anwesend → " + Fmt.hm(Work.pauseForGross(mid, r)) + " Pause → "
+                + Fmt.hm(Work.netForGross(mid, r)) + " h netto\n"
+                + "ab " + Fmt.hm(full) + " h anwesend → immer " + r.pauseMin + " Min. Pause\n"
+                + "Einzelne Tage kannst du in der Tabelle anders eintragen.");
+    }
+
     private void showHolidayList() {
         int idx = spState.getSelectedItemPosition();
         if (idx < 0) idx = 0;
@@ -215,6 +230,8 @@ final class SettingsTab {
         fillLocationFields();
 
         etSoll.setText(Fmt.hoursInput(Prefs.sollMin(a)));
+        etPauseAfter.setText(Fmt.hoursInput(Prefs.pauseAfterMin(a)));
+        showPauseExample(Prefs.rules(a));
         etStartBal.setText(Fmt.hoursInput(Prefs.startBalanceMin(a)));
         startDate = Prefs.otStartDate(a);
         updateStartDateButton();
@@ -222,7 +239,7 @@ final class SettingsTab {
         double rate = Prefs.hourlyRate(a);
         etRate.setText(rate > 0 ? String.format(Locale.GERMANY, "%.2f", rate) : "");
 
-        Work.Surcharges s = Prefs.surcharges(a);
+        Work.Rules s = Prefs.rules(a);
         etSurWeek.setText(String.valueOf(s.week));
         etSurSatLow.setText(String.valueOf(s.satLow));
         etSatLowHours.setText(Fmt.hoursInput(s.satLowMin));
@@ -251,6 +268,7 @@ final class SettingsTab {
 
             // Überstunden
             int soll = hoursToMin(etSoll, "Sollarbeitszeit", 0.5, 24);
+            int pauseAfter = hoursToMin(etPauseAfter, "Pause ab", 0, 24);
             int startBal = hoursToMin(etStartBal, "Überstunden zum Start", -2000, 2000);
             int limit = hoursToMin(etLimit, "Auszahlungsgrenze", 0, 2000);
             String rateTxt = etRate.getText().toString().trim();
@@ -258,7 +276,7 @@ final class SettingsTab {
             if (rate < 0 || rate > 1000) throw new IllegalArgumentException("Stundenlohn: 0 bis 1000 €.");
 
             // Zuschläge & Feiertage
-            Work.Surcharges s = new Work.Surcharges();
+            Work.Rules s = new Work.Rules();
             s.week = parseInt(etSurWeek, "Zuschlag Mo–Fr", 0, 500);
             s.satLow = parseInt(etSurSatLow, "Zuschlag Samstag (erste Stunden)", 0, 500);
             s.satLowMin = hoursToMin(etSatLowHours, "Samstag: Anzahl Stunden", 0, 24);
@@ -276,8 +294,8 @@ final class SettingsTab {
             Prefs.saveSettings(a, radius, offset, maxWork, brk, resume, warn, swEnabled.isChecked());
             if (coords != null) Prefs.setWorkLocation(a, coords[0], coords[1]);
             else Prefs.clearWorkLocation(a);
-            Prefs.saveOvertimeSettings(a, soll, startBal, startDate, limit, rate);
-            Prefs.saveSurcharges(a, s);
+            Prefs.saveOvertimeSettings(a, soll, pauseAfter, startBal, startDate, limit, rate);
+            Prefs.saveRules(a, s);
         } catch (IllegalArgumentException e) {
             toast(e.getMessage());
             return;

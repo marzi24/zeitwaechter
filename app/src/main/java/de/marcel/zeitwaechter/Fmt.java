@@ -116,18 +116,4 @@ final class Fmt {
         if (s.endsWith(",")) s = s.substring(0, s.length() - 1);
         return s;
     }
-
-    /**
-     * Geschätzte Netto-Arbeitszeit nach Arbeitszeitgesetz (§ 4 ArbZG):
-     * über 6 h mind. 30 Min. Pause, über 9 h mind. 45 Min. Pause.
-     * Nur eine Schätzung – die tatsächlichen Pausen kennt die App nicht.
-     */
-    static long netMs(long grossMs) {
-        long six = 6 * 3_600_000L;
-        long nine = 9 * 3_600_000L;
-        long net = grossMs;
-        if (net > six) net = Math.max(six, grossMs - 30 * 60_000L);
-        if (net > nine) net = Math.max(nine, grossMs - 45 * 60_000L);
-        return net;
-    }
 }

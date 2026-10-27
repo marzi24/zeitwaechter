@@ -46,6 +46,7 @@ public final class Prefs {
 
     // Überstunden
     private static final String K_SOLL = "soll_min_day";
+    private static final String K_PAUSE_AFTER = "pause_after_min";
     private static final String K_START_BAL = "start_balance_min";
     private static final String K_OT_LIMIT = "ot_limit_min";
     private static final String K_RATE = "hourly_rate";
@@ -366,10 +367,11 @@ public final class Prefs {
         return LocalDate.ofEpochDay(epochDay);
     }
 
-    public static void saveOvertimeSettings(Context c, int sollMin, int startBalMin, LocalDate startDate,
-                                            int limitMin, double rate) {
+    public static void saveOvertimeSettings(Context c, int sollMin, int pauseAfterMin, int startBalMin,
+                                            LocalDate startDate, int limitMin, double rate) {
         sp(c).edit()
                 .putInt(K_SOLL, sollMin)
+                .putInt(K_PAUSE_AFTER, pauseAfterMin)
                 .putInt(K_START_BAL, startBalMin)
                 .putLong(K_START_DATE, startDate.toEpochDay())
                 .putInt(K_OT_LIMIT, limitMin)
@@ -377,10 +379,18 @@ public final class Prefs {
                 .commit();
     }
 
-    /** Zuschläge und Feiertags-Einstellungen. */
-    public static Work.Surcharges surcharges(Context c) {
-        Work.Surcharges s = new Work.Surcharges();
+    /** Ab dieser Anwesenheit (Minuten) wird Pause abgezogen (Standard 6 h). */
+    public static int pauseAfterMin(Context c) {
+        return sp(c).getInt(K_PAUSE_AFTER, 360);
+    }
+
+    /** Alle Rechenregeln: Sollzeit, Pause, Zuschläge und Feiertage. */
+    public static Work.Rules rules(Context c) {
+        Work.Rules s = new Work.Rules();
         SharedPreferences p = sp(c);
+        s.sollMin = p.getInt(K_SOLL, 480);
+        s.pauseAfterMin = p.getInt(K_PAUSE_AFTER, 360);
+        s.pauseMin = p.getInt(K_BREAK, 45);
         s.week = p.getInt(K_SUR_WEEK, 25);
         s.satLow = p.getInt(K_SUR_SAT_LOW, 25);
         s.satLowMin = p.getInt(K_SAT_LOW_MIN, 120);
@@ -392,7 +402,7 @@ public final class Prefs {
         return s;
     }
 
-    public static void saveSurcharges(Context c, Work.Surcharges s) {
+    public static void saveRules(Context c, Work.Rules s) {
         sp(c).edit()
                 .putInt(K_SUR_WEEK, s.week)
                 .putInt(K_SUR_SAT_LOW, s.satLow)

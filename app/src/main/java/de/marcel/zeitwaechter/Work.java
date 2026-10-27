@@ -32,17 +32,34 @@ final class Work {
         return Math.max(0, e.end - e.start);
     }
 
-    /** Pause: von Hand eingetragen oder automatisch nach Arbeitszeitgesetz (über 6 h: 30, über 9 h: 45 Min.). */
-    static long pauseMs(Prefs.Entry e) {
+    /**
+     * Automatische Pause nach der Regel des Arbeitgebers:
+     * Ab {@code pauseAfterMin} Anwesenheit wird nur so viel abgezogen, dass man genau auf diese Zeit kommt,
+     * höchstens {@code pauseMin}. Standard: ab 6 h, max. 45 Min.
+     *   5:50 h → 0 Min.   6:32 h → 32 Min. (= 6:00 netto)   6:45 h und mehr → 45 Min.
+     */
+    static long pauseForGross(long grossMs, Rules r) {
+        long over = grossMs - r.pauseAfterMin * MIN;
+        if (over <= 0) return 0;
+        return Math.min(over, r.pauseMin * MIN);
+    }
+
+    /** Netto-Zeit für eine Anwesenheit mit automatischer Pause. */
+    static long netForGross(long grossMs, Rules r) {
+        return Math.max(0, grossMs) - pauseForGross(Math.max(0, grossMs), r);
+    }
+
+    /** Pause: von Hand eingetragen oder automatisch (siehe {@link #pauseForGross}). */
+    static long pauseMs(Prefs.Entry e, Rules r) {
         if (e.isFreeDay()) return 0;
         long g = grossMs(e);
         if (e.pause >= 0) return Math.min(g, e.pause * MIN);
-        return g - Fmt.netMs(g);
+        return pauseForGross(g, r);
     }
 
     /** Netto-Arbeitszeit = Anwesenheit − Pause. */
-    static long netMs(Prefs.Entry e) {
-        return grossMs(e) - pauseMs(e);
+    static long netMs(Prefs.Entry e, Rules r) {
+        return grossMs(e) - pauseMs(e, r);
     }
 
     static LocalDate day(long ms) {
@@ -83,7 +100,7 @@ final class Work {
      *
      * @param hist nach Beginn sortierter Verlauf (ohne den laufenden Einsatz)
      */
-    static DayInfo dayInfo(List<Prefs.Entry> hist, long start, int maxWorkMin, int breakMin) {
+    static DayInfo dayInfo(List<Prefs.Entry> hist, long start, int maxWorkMin, Rules r) {
         DayInfo d = new DayInfo();
         long next = start;
         for (int i = hist.size() - 1; i >= 0; i--) {
@@ -94,13 +111,13 @@ final class Work {
             if (gap >= REST_NEW_DAY) break;          // genug Ruhezeit -> neuer Arbeitstag
             if (start - e.start >= 24 * HOUR) break; // mehr als 24 h her
             if (gap >= MIN_BREAK_BLOCK) d.gaps += gap;
-            d.earlierNet += netMs(e);
-            d.earlierPause += pauseMs(e);
+            d.earlierNet += netMs(e, r);
+            d.earlierPause += pauseMs(e, r);
             d.earlierSessions++;
             next = e.start;
         }
         long max = maxWorkMin * MIN;
-        long brk = breakMin * MIN;
+        long brk = r.pauseMin * MIN;
         if (d.earlierSessions == 0) {
             d.remainingNet = max;
             d.extraBreak = brk;
@@ -132,12 +149,20 @@ final class Work {
     }
 
     /**
+     * Sollzeit eines Tages: nur Montag–Freitag, nicht an Feiertagen.
+     * Samstag, Sonntag und Feiertage haben 0 – dort ist jede Stunde eine Überstunde.
+     */
+    static long sollFor(LocalDate d, Rules r) {
+        return type(d, r.state, r.extraHolidays) == DayType.WERKTAG ? r.sollMin * MIN : 0;
+    }
+
+    /**
      * Fasst den Verlauf zu Tagen zusammen (nach dem Datum des Beginns).
-     * An jedem Tag mit mindestens einem Eintrag gilt die Sollzeit, auch an einem
-     * „freien Tag“ (Überstundenabbau), der dann 0 Ist-Stunden hat.
+     * An Werktagen (Mo–Fr, kein Feiertag) mit mindestens einem Eintrag gilt die Sollzeit,
+     * auch an einem „freien Tag“ (Überstundenabbau), der dann 0 Ist-Stunden hat.
      * Tage ohne Eintrag (frei, Urlaub, krank) zählen weder Soll noch Ist.
      */
-    static List<Day> days(List<Prefs.Entry> hist, int sollMin) {
+    static List<Day> days(List<Prefs.Entry> hist, Rules r) {
         List<Day> out = new ArrayList<>();
         Day cur = null;
         for (int i = 0; i < hist.size(); i++) {
@@ -145,12 +170,12 @@ final class Work {
             LocalDate d = day(e.start);
             if (cur == null || !cur.date.equals(d)) {
                 cur = new Day(d);
-                cur.soll = sollMin * MIN;
+                cur.soll = sollFor(d, r);
                 out.add(cur);
             }
             cur.indexes.add(i);
-            cur.net += netMs(e);
-            cur.pause += pauseMs(e);
+            cur.net += netMs(e, r);
+            cur.pause += pauseMs(e, r);
         }
         for (Day d : out) d.diff = d.net - d.soll;
         return out;
@@ -184,8 +209,11 @@ final class Work {
         }
     }
 
-    /** Zuschläge in Prozent (aus den Einstellungen). */
-    static final class Surcharges {
+    /** Alle Rechenregeln aus den Einstellungen: Sollzeit, Pause, Zuschläge, Feiertage. */
+    static final class Rules {
+        int sollMin = 480;      // Sollzeit pro Werktag Mo–Fr
+        int pauseAfterMin = 360; // Pause wird ab 6 h Anwesenheit abgezogen …
+        int pauseMin = 45;      // … höchstens 45 Minuten
         int week = 25;          // Montag–Freitag
         int satLow = 25;        // Samstag, die ersten satLowMin Minuten Überstunden
         int satLowMin = 120;    // = 2 Stunden
@@ -205,13 +233,13 @@ final class Work {
         }
 
         /** Zuschlag in „Prozent-Stunden“, z. B. 2 h × 25 % = 50. */
-        double pctHours(Surcharges s) {
+        double pctHours(Rules s) {
             return (week * s.week + satLow * s.satLow + satHigh * s.satHigh + sun * s.sun + hol * s.hol)
                     / (double) HOUR;
         }
 
         /** Durchschnittlicher Zuschlag aller Überstunden in Prozent. */
-        double averagePct(Surcharges s) {
+        double averagePct(Rules s) {
             long t = total();
             if (t <= 0) return s.week;
             return pctHours(s) / (t / (double) HOUR);
@@ -222,7 +250,7 @@ final class Work {
      * Teilt die Überstunden (nur Tage mit Plus) nach Tagesart auf.
      * Samstag: die ersten {@code satLowMin} Minuten mit satLow, der Rest mit satHigh.
      */
-    static OtSplit split(List<Day> days, Surcharges s) {
+    static OtSplit split(List<Day> days, Rules s) {
         OtSplit o = new OtSplit();
         for (Day d : days) {
             if (d.diff <= 0) continue;
@@ -274,7 +302,7 @@ final class Work {
      * @return Liste der Monate von startDate bis einschließlich {@code until}; leer, wenn until davor liegt.
      */
     static List<Month> account(List<Day> allDays, LocalDate startDate, long startBalMs, long limitMs,
-                               YearMonth until, Surcharges s) {
+                               YearMonth until, Rules s) {
         List<Month> out = new ArrayList<>();
         YearMonth ym = YearMonth.from(startDate);
         long bal = startBalMs;
@@ -304,7 +332,7 @@ final class Work {
      * Der Zuschlag ist der Durchschnitt über die Überstunden dieses Monats
      * (jede ausgezahlte Stunde wird anteilig nach Werktag/Samstag/Sonntag/Feiertag bewertet).
      */
-    static double payoutEuro(Month m, double hourlyRate, Surcharges s) {
+    static double payoutEuro(Month m, double hourlyRate, Rules s) {
         double hours = m.payout / (double) HOUR;
         return hours * hourlyRate * (1 + m.ot.averagePct(s) / 100.0);
     }

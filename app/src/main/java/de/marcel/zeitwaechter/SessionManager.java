@@ -37,7 +37,7 @@ public final class SessionManager {
 
     /** Tagesberechnung (frühere Einsätze, Restzeit, Pause) für einen Einsatz ab {@code start}. */
     public static Work.DayInfo dayInfo(Context c, long start) {
-        return Work.dayInfo(Prefs.history(c), start, Prefs.maxWorkMin(c), Prefs.breakMin(c));
+        return Work.dayInfo(Prefs.history(c), start, Prefs.maxWorkMin(c), Prefs.rules(c));
     }
 
     /** Nach Änderungen am Verlauf: Warnungen und Anzeige der laufenden Sitzung neu berechnen. */
@@ -94,7 +94,7 @@ public final class SessionManager {
         end(c, stampOut, false);
         Notifier.showInfo(c, "Feierabend erkannt",
                 "Ausgestempelt ca. " + Fmt.time(stampOut) + " · anwesend " + Fmt.duration(stampOut - start)
-                        + " (netto ca. " + Fmt.duration(Fmt.netMs(stampOut - start)) + ")");
+                        + " (netto ca. " + Fmt.duration(Work.netForGross(stampOut - start, Prefs.rules(c))) + ")");
     }
 
     // ---------------- Aktionen ----------------

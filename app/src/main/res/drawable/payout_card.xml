@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Auffällige Karte für den Auszahlungsbetrag -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <gradient
+        android:angle="315"
+        android:endColor="@color/payout_card_end"
+        android:startColor="@color/payout_card_start" />
+    <corners android:radius="16dp" />
+</shape>
