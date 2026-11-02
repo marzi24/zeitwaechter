@@ -29,7 +29,15 @@ final class Work {
     /** Anwesenheit (Kommen bis Gehen). Freie Tage haben 0. */
     static long grossMs(Prefs.Entry e) {
         if (e.isFreeDay()) return 0;
-        return Math.max(0, e.end - e.start);
+        return Math.max(0, toMinute(e.end) - toMinute(e.start));
+    }
+
+    /**
+     * Schneidet Sekunden ab – wie die Stempeluhr, die nur ganze Minuten kennt.
+     * 08:20:36 → 08:20:00. So entstehen keine versteckten Sekundenreste in den Summen.
+     */
+    static long toMinute(long ms) {
+        return Math.floorDiv(ms, MIN) * MIN;
     }
 
     /**

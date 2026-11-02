@@ -264,6 +264,7 @@ Konto 35 + 11 = 46 h  →  6 h über 40 h
 6 h × 25,00 € × 1,4455 = 216,82 € brutto
 ```
 
+Wie die Stempeluhr rechnet die App nur mit **ganzen Minuten** (Sekunden werden abgeschnitten).
 Ein Arbeitstag zählt komplett zum Datum, an dem er begonnen hat (wichtig bei Nachtdiensten über Mitternacht).
 **Ganz unten** im Reiter steht der Betrag groß auf einer grünen Karte: im laufenden Monat als
 „Voraussichtliche Auszahlung“ (Stand heute), in vergangenen Monaten als endgültiger Wert.

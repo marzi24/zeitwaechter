@@ -239,7 +239,7 @@ public final class Prefs {
     public static void setSession(Context c, long start, String source) {
         sp(c).edit()
                 .putBoolean(K_ACTIVE, true)
-                .putLong(K_START, start)
+                .putLong(K_START, Work.toMinute(start))
                 .putString(K_SOURCE, source)
                 .commit();
     }
@@ -294,8 +294,8 @@ public final class Prefs {
             for (int i = from; i < sorted.size(); i++) {
                 Entry e = sorted.get(i);
                 JSONObject o = new JSONObject();
-                o.put("s", e.start);
-                o.put("e", e.end);
+                o.put("s", Work.toMinute(e.start));
+                o.put("e", Work.toMinute(e.end));
                 o.put("q", e.source);
                 o.put("p", e.pause);
                 arr.put(o);
