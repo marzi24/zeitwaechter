@@ -1,13 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Dunkles Grund-Design: Knöpfe, Eingabefelder, Dialoge und Uhrzeitauswahl werden dunkel -->
+<!-- Dunkles Grund-Design: Dialoge, Uhrzeitauswahl usw. werden dunkel -->
 <resources>
 
     <style name="AppTheme" parent="@android:style/Theme.Material.NoActionBar">
         <item name="android:colorPrimary">@color/primary</item>
         <item name="android:colorPrimaryDark">@color/bg</item>
-        <item name="android:colorAccent">@color/primary_dark</item>
+        <item name="android:colorAccent">@color/primary</item>
         <item name="android:windowBackground">@color/bg</item>
         <item name="android:statusBarColor">@color/bg</item>
+        <item name="android:navigationBarColor">@color/nav_bg</item>
         <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+        <item name="android:textColorPrimary">@color/text</item>
+        <item name="android:textColorSecondary">@color/text_secondary</item>
     </style>
 </resources>

@@ -52,6 +52,17 @@ final class Work {
         return Math.min(over, r.pauseMin * MIN);
     }
 
+    /**
+     * Umkehrung von {@link #netForGross}: Wie lange muss man anwesend sein, um {@code netMs} netto zu haben?
+     * Beispiel (ab 6 h, max. 45 Min.): 8:00 netto → 8:45 anwesend; 5:00 netto → 5:00 anwesend.
+     */
+    static long grossForNet(long netMs, Rules r) {
+        if (netMs <= 0) return 0;
+        long after = r.pauseAfterMin * MIN;
+        if (netMs <= after) return netMs;
+        return netMs + r.pauseMin * MIN;
+    }
+
     /** Netto-Zeit für eine Anwesenheit mit automatischer Pause. */
     static long netForGross(long grossMs, Rules r) {
         return Math.max(0, grossMs) - pauseForGross(Math.max(0, grossMs), r);
@@ -371,5 +382,115 @@ final class Work {
     static double payoutEuro(Month m, double hourlyRate, Rules s) {
         double hours = m.payout / (double) HOUR;
         return hours * hourlyRate * (1 + m.ot.averagePct(s) / 100.0);
+    }
+
+    // =====================================================================
+    // Anzeige „Heute“: Ring, Plus/Minus, Markierung
+    // =====================================================================
+
+    /** Alles, was der Bildschirm „Heute“ anzeigt. */
+    static final class Today {
+        boolean active;
+        DayInfo di;
+        /** Anwesenheit im laufenden Einsatz. */
+        long sessionGross;
+        /** Netto des ganzen Kalendertags (alle Einsätze + laufender). */
+        long dayNet;
+        /** Sollzeit des Tages (Mo–Fr, sonst 0). */
+        long soll;
+        /** dayNet − soll. */
+        long diff;
+        /** Gibt es heute überhaupt schon Arbeitszeit? */
+        boolean hasWork;
+        long deadline;
+        long left;
+        /** 0..1 Füllung des Rings. */
+        float progress;
+        /** 0..1 Position der Plus-Markierung, -1 = keine. */
+        float marker = -1f;
+        /** Zeitpunkt, ab dem es ins Plus geht (0 = schon im Plus oder nicht erreichbar). */
+        long plusAt;
+
+        boolean plus() {
+            return diff >= 0;
+        }
+    }
+
+    /**
+     * Berechnet den Zustand für „Heute“.
+     * Laufender Einsatz: Ring = Einstempeln → späteste Ausstempelzeit, Markierung = Moment, ab dem es ins Plus geht.
+     * Nicht eingestempelt: Ring = heutiges Netto im Verhältnis zur Höchstarbeitszeit.
+     */
+    static Today today(List<Prefs.Entry> hist, boolean active, long start, long now, int maxWorkMin, Rules r) {
+        Today t = new Today();
+        t.active = active;
+        LocalDate date = day(active ? start : now);
+        long earlierSameDay = 0;
+        boolean entriesToday = false;
+        for (Prefs.Entry e : hist) {
+            if (day(e.start).equals(date)) {
+                earlierSameDay += netMs(e, r);
+                entriesToday = true;
+            }
+        }
+        t.soll = sollFor(date, r);
+
+        if (active) {
+            t.di = dayInfo(hist, start, maxWorkMin, r);
+            t.sessionGross = Math.max(0, toMinute(now) - toMinute(start));
+            t.dayNet = earlierSameDay + netForGross(t.sessionGross, r);
+            t.diff = t.dayNet - t.soll;
+            t.hasWork = true;
+            t.deadline = t.di.deadline;
+            t.left = t.deadline - now;
+            long span = Math.max(MIN, t.deadline - start);
+            t.progress = (float) Math.max(0, Math.min(1, (now - start) / (double) span));
+            long needNet = t.soll - earlierSameDay;
+            if (needNet > 0) {
+                long at = start + grossForNet(needNet, r);
+                if (at <= t.deadline) {
+                    t.marker = (float) ((at - start) / (double) span);
+                    if (at > now) t.plusAt = at;
+                }
+            }
+        } else {
+            t.di = dayInfo(hist, now, maxWorkMin, r);
+            t.dayNet = earlierSameDay;
+            t.diff = t.dayNet - t.soll;
+            t.hasWork = entriesToday;
+            long max = Math.max(MIN, maxWorkMin * MIN);
+            t.progress = (float) Math.min(1, t.dayNet / (double) max);
+            if (t.soll > 0 && t.soll < max) t.marker = (float) (t.soll / (double) max);
+            t.deadline = t.di.deadline;
+            t.left = t.deadline - now;
+        }
+        return t;
+    }
+
+    /** Netto je Wochentag Mo..So der Woche, in der {@code now} liegt (inkl. laufendem Einsatz). */
+    static long[] weekNet(List<Prefs.Entry> hist, boolean active, long start, long now, Rules r) {
+        long[] out = new long[7];
+        LocalDate monday = day(now).with(java.time.DayOfWeek.MONDAY);
+        for (Prefs.Entry e : hist) {
+            long idx = day(e.start).toEpochDay() - monday.toEpochDay();
+            if (idx >= 0 && idx < 7) out[(int) idx] += netMs(e, r);
+        }
+        if (active) {
+            long idx = day(start).toEpochDay() - monday.toEpochDay();
+            if (idx >= 0 && idx < 7) {
+                out[(int) idx] += netForGross(Math.max(0, toMinute(now) - toMinute(start)), r);
+            }
+        }
+        return out;
+    }
+
+    /** Überstunden der Woche: Summe (Netto − Soll) über alle Tage mit Arbeit. */
+    static long weekDiff(long[] weekNet, LocalDate monday, boolean[] hasEntry, Rules r) {
+        long sum = 0;
+        for (int i = 0; i < 7; i++) {
+            if (!hasEntry[i]) continue;
+            sum += weekNet[i] - sollFor(monday.plusDays(i), r);
+        }
+        return sum;
     }
 }

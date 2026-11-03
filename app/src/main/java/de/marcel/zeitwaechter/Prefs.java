@@ -184,6 +184,10 @@ public final class Prefs {
         return sp(c).getString(K_WARN, "30, 15, 5");
     }
 
+    public static void setTrackingEnabled(Context c, boolean on) {
+        sp(c).edit().putBoolean(K_ENABLED, on).commit();
+    }
+
     public static boolean trackingEnabled(Context c) {
         return sp(c).getBoolean(K_ENABLED, true);
     }

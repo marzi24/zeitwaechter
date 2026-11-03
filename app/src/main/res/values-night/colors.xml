@@ -1,20 +1,32 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Farben für den Dark-Modus (wird automatisch genutzt, wenn das Handy dunkel eingestellt ist) -->
 <resources>
-    <color name="primary">#4A86D8</color>
-    <color name="primary_dark">#8AB4F8</color>
-    <color name="bg">#111418</color>
-    <color name="card">#1D2127</color>
-    <color name="text">#E6E9ED</color>
-    <color name="text_secondary">#9AA4B1</color>
-    <color name="ok">#66BB6A</color>
-    <color name="warn">#FFB74D</color>
-    <color name="danger">#EF5350</color>
-    <color name="row_alt">#252A31</color>
-    <color name="payout_bg">#1F2C3D</color>
-    <color name="on_primary">#FFFFFF</color>
-    <color name="warn_bg">#3D3220</color>
-    <color name="payout_card_start">#2E6B33</color>
-    <color name="payout_card_end">#1C4421</color>
+    <color name="primary">#8C9EFF</color>
+    <color name="primary_dark">#EDF0F6</color>
+    <color name="primary_soft">#262D4D</color>
+    <color name="on_primary">#0E1230</color>
+    <color name="bg">#0E1015</color>
+    <color name="card">#181B22</color>
+    <color name="surface2">#20242D</color>
+    <color name="text">#EDF0F6</color>
+    <color name="text_secondary">#9AA3B5</color>
+    <color name="line">#2A2F3A</color>
+    <color name="ok">#4CD38A</color>
+    <color name="ok_soft">#15301F</color>
+    <color name="warn">#FFB547</color>
+    <color name="warn_soft">#3A2C12</color>
+    <color name="danger">#FF6B6E</color>
+    <color name="danger_soft">#3A1A1C</color>
+    <color name="ring_track">#262B36</color>
+    <color name="row_alt">#20242D</color>
+    <color name="warn_bg">#3A2C12</color>
+    <color name="nav_bg">#14171D</color>
+    <color name="payout_card_start">#2A9C5E</color>
+    <color name="payout_card_end">#0B4427</color>
     <color name="on_payout">#F1F8E9</color>
+    <color name="pill_on_payout">#26FFFFFF</color>
+    <color name="seg_week">#8C9EFF</color>
+    <color name="seg_sat_low">#B3BFFF</color>
+    <color name="seg_sat_high">#FFB547</color>
+    <color name="seg_sun">#D08CF5</color>
+    <color name="seg_hol">#FF6B6E</color>
 </resources>

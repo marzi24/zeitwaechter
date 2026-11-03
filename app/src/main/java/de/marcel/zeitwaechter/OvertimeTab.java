@@ -6,50 +6,66 @@ import android.app.TimePickerDialog;
 import android.content.Intent;
 import android.graphics.Typeface;
 import android.text.InputType;
+import android.text.SpannableStringBuilder;
+import android.text.Spanned;
+import android.text.style.ForegroundColorSpan;
+import android.text.style.StyleSpan;
+import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
-import android.widget.TableLayout;
-import android.widget.TableRow;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.YearMonth;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.time.format.TextStyle;
+import java.time.temporal.IsoFields;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
 /**
- * Reiter „Arbeitszeit“: Monatstabelle, Einträge bearbeiten/hinzufügen,
- * Überstundenkonto und Auszahlung über der Grenze (Standard 40 h).
+ * Reiter „Arbeitszeit“: Monatsübersicht, Tagesliste nach Kalenderwochen,
+ * Überstundenkonto und Auszahlungskarte.
  */
 final class OvertimeTab {
+
+    private static final String[] WD = {"MO", "DI", "MI", "DO", "FR", "SA", "SO"};
+    private static final DateTimeFormatter MON_SHORT = DateTimeFormatter.ofPattern("MMM", Locale.GERMANY);
 
     private final MainActivity a;
     private YearMonth month = YearMonth.now();
 
-    private final TextView tvMonth, tvMonthSum, tvAccTitle, tvBalance, tvBalanceInfo, tvOtSplit,
-            tvPayoutTitle, tvPayoutAmount, tvPayoutDetail;
-    private final TableLayout table;
+    private final TextView tvMonth, tvMonthOt, tvLegend, tvIst, tvSoll, tvKontoEnde, tvAccTitle,
+            tvPayoutTitle, tvPayoutAmount, tvPayoutDetail, tvPayoutPill1, tvPayoutPill2;
+    private final SegmentBarView segBar;
+    private final LinearLayout dayList, accRows;
 
     OvertimeTab(MainActivity activity) {
         a = activity;
         tvMonth = a.findViewById(R.id.tvMonth);
-        tvMonthSum = a.findViewById(R.id.tvMonthSum);
+        tvMonthOt = a.findViewById(R.id.tvMonthOt);
+        tvLegend = a.findViewById(R.id.tvLegend);
+        tvIst = a.findViewById(R.id.tvIst);
+        tvSoll = a.findViewById(R.id.tvSoll);
+        tvKontoEnde = a.findViewById(R.id.tvKontoEnde);
         tvAccTitle = a.findViewById(R.id.tvAccTitle);
-        tvBalance = a.findViewById(R.id.tvBalance);
-        tvBalanceInfo = a.findViewById(R.id.tvBalanceInfo);
-        tvOtSplit = a.findViewById(R.id.tvOtSplit);
         tvPayoutTitle = a.findViewById(R.id.tvPayoutTitle);
         tvPayoutAmount = a.findViewById(R.id.tvPayoutAmount);
         tvPayoutDetail = a.findViewById(R.id.tvPayoutDetail);
-        table = a.findViewById(R.id.tableMonth);
+        tvPayoutPill1 = a.findViewById(R.id.tvPayoutPill1);
+        tvPayoutPill2 = a.findViewById(R.id.tvPayoutPill2);
+        segBar = a.findViewById(R.id.segBar);
+        dayList = a.findViewById(R.id.dayList);
+        accRows = a.findViewById(R.id.accRows);
 
         a.findViewById(R.id.btnPrevMonth).setOnClickListener(v -> {
             month = month.minusMonths(1);
@@ -59,9 +75,14 @@ final class OvertimeTab {
             month = month.plusMonths(1);
             refresh();
         });
-        a.findViewById(R.id.btnAddEntry).setOnClickListener(v -> editEntry(-1));
-        a.findViewById(R.id.btnAddFree).setOnClickListener(v -> addFreeDay());
         a.findViewById(R.id.btnExport).setOnClickListener(v -> exportCsv());
+        a.findViewById(R.id.btnFab).setOnClickListener(v -> new AlertDialog.Builder(a)
+                .setTitle("Neuer Eintrag")
+                .setItems(new String[]{"Arbeitszeit nachtragen", "Freier Tag (Überstundenabbau)"}, (d, which) -> {
+                    if (which == 0) editEntry(-1);
+                    else addFreeDay();
+                })
+                .show());
     }
 
     // =====================================================================
@@ -72,185 +93,333 @@ final class OvertimeTab {
         List<Prefs.Entry> hist = Prefs.history(a);
         Work.Rules sur = Prefs.rules(a);
         List<Work.Day> all = Work.days(hist, sur);
-        refreshTable(hist, all, sur);
-        refreshAccount(all, sur);
+        tvMonth.setText(monthName(month));
+        List<Work.Day> days = Work.daysInMonth(all, month);
+        Work.Month m = accountMonth(all, sur);
+        refreshSummary(days, m, sur);
+        refreshDayList(hist, days, sur);
+        refreshAccount(m, sur);
     }
 
-    private void refreshTable(List<Prefs.Entry> hist, List<Work.Day> all, Work.Rules sur) {
-        String name = month.getMonth().getDisplayName(TextStyle.FULL, Locale.GERMANY);
-        tvMonth.setText(name + " " + month.getYear());
+    private Work.Month accountMonth(List<Work.Day> all, Work.Rules sur) {
+        YearMonth now = YearMonth.now();
+        YearMonth until = month.isAfter(now) ? month : now;
+        List<Work.Month> months = Work.account(all, Prefs.otStartDate(a),
+                Prefs.startBalanceMin(a) * Work.MIN, Prefs.otLimitMin(a) * Work.MIN, until, sur);
+        for (Work.Month x : months) if (x.ym.equals(month)) return x;
+        return null;
+    }
 
-        table.removeAllViews();
-        int text = a.getColor(R.color.text);
-        int secondary = a.getColor(R.color.text_secondary);
-        table.addView(row(0, true, secondary,
-                "Datum", "Zeit", "Pause", "Netto", "+/−"));
-
-        List<Work.Day> days = Work.daysInMonth(all, month);
-        boolean alt = false;
+    /** Karte oben: Überstunden des Monats, farbiger Balken, Ist / Soll / Konto. */
+    private void refreshSummary(List<Work.Day> days, Work.Month m, Work.Rules sur) {
         long ist = 0, soll = 0;
         for (Work.Day d : days) {
-            int bg = alt ? a.getColor(R.color.row_alt) : 0;
-            alt = !alt;
             ist += d.net;
             soll += d.soll;
-            for (int k = 0; k < d.indexes.size(); k++) {
-                final int idx = d.indexes.get(k);
-                Prefs.Entry e = hist.get(idx);
-                boolean last = k == d.indexes.size() - 1;
-                Work.DayType type = Work.type(d.date, sur.state, sur.extraHolidays);
-                String date = k == 0
-                        ? Fmt.day(e.start) + (type == Work.DayType.FEIERTAG ? " F" : "")
-                        : "";
-                String time, pause, net;
-                if (e.isFreeDay()) {
-                    time = "frei (Abbau)";
-                    pause = "";
-                    net = "0:00";
-                } else {
-                    time = Fmt.time(e.start) + "–" + Fmt.time(e.end)
-                            + (Work.day(e.end).isAfter(Work.day(e.start)) ? "⁺¹" : "");
-                    pause = Fmt.hm(Work.pauseMs(e, sur)) + (e.pause < 0 ? "*" : "");
-                    net = Fmt.hm(Work.netMs(e, sur));
-                }
-                String diff = last ? Fmt.signed(d.diff) : "";
-                TableRow r = row(bg, false, text, date, time, pause, net, diff);
-                if (k == 0 && type != Work.DayType.WERKTAG) {
-                    ((TextView) r.getChildAt(0)).setTextColor(a.getColor(R.color.primary));
-                }
-                if (last) {
-                    TextView dv = (TextView) r.getChildAt(4);
-                    dv.setTextColor(a.getColor(d.diff >= 0 ? R.color.ok : R.color.danger));
-                    dv.setTypeface(Typeface.DEFAULT_BOLD);
-                }
-                r.setOnClickListener(v -> editEntry(idx));
-                table.addView(r);
-            }
         }
+        long ot = ist - soll;
+        tvMonthOt.setText(days.isEmpty() ? "—" : Fmt.signed(ot) + " h");
+        tvMonthOt.setTextColor(a.getColor(days.isEmpty() ? R.color.text_secondary : ot >= 0 ? R.color.ok : R.color.danger));
+        tvIst.setText(Fmt.hm(ist));
+        tvSoll.setText(Fmt.hm(soll));
+        tvKontoEnde.setText(m != null ? Fmt.signed(m.endBal) : "—");
 
-        // Laufender Einsatz (noch nicht in den Summen)
-        boolean runningHere = Prefs.active(a) && YearMonth.from(Work.day(Prefs.start(a))).equals(month);
-        if (runningHere) {
-            long start = Prefs.start(a);
-            long gross = Math.max(0, System.currentTimeMillis() - start);
-            table.addView(row(0, false, secondary,
-                    Fmt.day(start), Fmt.time(start) + "–läuft", "", Fmt.hm(Work.netForGross(gross, sur)), ""));
-        }
-        if (days.isEmpty() && !runningHere) {
-            TableRow r = new TableRow(a);
-            TextView t = cell("Keine Einträge in diesem Monat.", false, secondary, Gravity.START);
-            r.addView(t);
-            TableRow.LayoutParams lp = new TableRow.LayoutParams();
-            lp.span = 5;
-            t.setLayoutParams(lp);
-            table.addView(r);
-        }
+        Work.OtSplit o = Work.split(days, sur);
+        int[] colors = {a.getColor(R.color.seg_week), a.getColor(R.color.seg_sat_low), a.getColor(R.color.seg_sat_high),
+                a.getColor(R.color.seg_sun), a.getColor(R.color.seg_hol)};
+        long[] vals = {o.week, o.satLow, o.satHigh, o.sun, o.hol};
+        String[] names = {"Mo–Fr", "Sa bis " + Fmt.hoursInput(sur.satLowMin) + " h", "Sa danach", "Sonntag", "Feiertag"};
+        int[] pct = {sur.week, sur.satLow, sur.satHigh, sur.sun, sur.hol};
+        segBar.set(vals, colors);
 
-        tvMonthSum.setText("Arbeitstage: " + days.size()
-                + "   Ist: " + Fmt.hm(ist) + " h   Soll: " + Fmt.hm(soll) + " h\n"
-                + "Überstunden diesen Monat: " + Fmt.signed(ist - soll) + " h"
-                + (runningHere ? "\n(laufender Einsatz wird nach dem Ausstempeln eingerechnet)" : ""));
+        SpannableStringBuilder sb = new SpannableStringBuilder();
+        for (int i = 0; i < vals.length; i++) {
+            if (vals[i] <= 0) continue;
+            if (sb.length() > 0) sb.append("    ");
+            int st = sb.length();
+            sb.append("●");
+            sb.setSpan(new ForegroundColorSpan(colors[i]), st, sb.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            // geschützte Leerzeichen: ein Eintrag bricht nicht mitten durch
+            sb.append(("\u00A0" + names[i] + " " + Fmt.hm(vals[i]) + " · " + pct[i] + " %").replace(" ", "\u00A0"));
+        }
+        if (sb.length() == 0) sb.append("Noch keine Überstunden in diesem Monat.");
+        tvLegend.setText(sb);
     }
 
-    /** Überstundenkonto des angezeigten Monats mit Zuschlägen und Auszahlung. */
-    private void refreshAccount(List<Work.Day> all, Work.Rules sur) {
+    /** Tagesliste, neueste Tage oben, gruppiert nach Kalenderwoche. */
+    private void refreshDayList(List<Prefs.Entry> hist, List<Work.Day> days, Work.Rules sur) {
+        dayList.removeAllViews();
+
+        boolean running = Prefs.active(a) && YearMonth.from(Work.day(Prefs.start(a))).equals(month);
+        if (running) {
+            long start = Prefs.start(a);
+            long gross = Math.max(0, Work.toMinute(System.currentTimeMillis()) - Work.toMinute(start));
+            dayList.addView(weekHeader("Läuft gerade"));
+            dayList.addView(dayRow(Work.day(start), Fmt.time(start) + " – jetzt",
+                    plain("Netto bisher " + Fmt.hm(Work.netForGross(gross, sur))), "läuft", R.drawable.bg_chip_primary,
+                    R.color.primary, false, null));
+        }
+        if (days.isEmpty()) {
+            if (!running) {
+                TextView t = text("Keine Einträge in diesem Monat.\nNeue Einträge über „+ Eintrag“ unten rechts.", 14,
+                        R.color.text_secondary, false);
+                t.setPadding(dp(18), dp(16), dp(18), dp(16));
+                dayList.addView(t);
+            }
+            return;
+        }
+
+        int lastWeek = -1;
+        boolean firstInWeek = true;
+        for (int i = days.size() - 1; i >= 0; i--) {
+            Work.Day d = days.get(i);
+            int week = d.date.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR);
+            if (week != lastWeek) {
+                LocalDate mon = d.date.with(DayOfWeek.MONDAY);
+                LocalDate sun = d.date.with(DayOfWeek.SUNDAY);
+                if (mon.isBefore(month.atDay(1))) mon = month.atDay(1);
+                if (sun.isAfter(month.atEndOfMonth())) sun = month.atEndOfMonth();
+                dayList.addView(weekHeader("KW " + week + " · " + mon.getDayOfMonth() + ".–" + sun.getDayOfMonth() + ". "
+                        + MON_SHORT.format(sun)));
+                lastWeek = week;
+                firstInWeek = true;
+            }
+            if (!firstInWeek) dayList.addView(divider());
+            firstInWeek = false;
+            dayList.addView(dayView(hist, d, sur));
+        }
+    }
+
+    private View dayView(List<Prefs.Entry> hist, Work.Day d, Work.Rules sur) {
+        Work.DayType type = Work.type(d.date, sur.state, sur.extraHolidays);
+        StringBuilder times = new StringBuilder();
+        long pause = 0;
+        boolean manualPause = false;
+        boolean free = false;
+        int sessions = 0;
+        for (int idx : d.indexes) {
+            Prefs.Entry e = hist.get(idx);
+            if (e.isFreeDay()) {
+                free = true;
+                continue;
+            }
+            sessions++;
+            if (times.length() > 0) times.append(" · ");
+            times.append(Fmt.time(e.start)).append("–").append(Fmt.time(e.end));
+            if (Work.day(e.end).isAfter(Work.day(e.start))) times.append("⁺¹");
+            pause += Work.pauseMs(e, sur);
+            manualPause |= e.pause >= 0;
+        }
+        if (times.length() == 0) times.append(free ? "Frei (Überstundenabbau)" : "—");
+
+        SpannableStringBuilder meta = new SpannableStringBuilder();
+        String tag = null;
+        if (type == Work.DayType.FEIERTAG) tag = Holidays.name(d.date, sur.state, sur.extraHolidays);
+        else if (type == Work.DayType.SAMSTAG) tag = "Samstag";
+        else if (type == Work.DayType.SONNTAG) tag = "Sonntag";
+        if (tag != null) {
+            meta.append(tag);
+            meta.setSpan(new ForegroundColorSpan(a.getColor(R.color.primary)), 0, meta.length(),
+                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            meta.setSpan(new StyleSpan(Typeface.BOLD), 0, meta.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            meta.append(" · kein Soll · ");
+        }
+        if (sessions > 1) meta.append(sessions + " Einsätze · ");
+        else if (sessions == 1) meta.append("Pause " + Fmt.hm(pause) + (manualPause ? "" : "*") + " · ");
+        meta.append("Netto " + Fmt.hm(d.net));
+
+        boolean pos = d.diff >= 0;
+        final Work.Day day = d;
+        return dayRow(d.date, times.toString(), meta, Fmt.signed(d.diff),
+                pos ? R.drawable.bg_chip_ok : R.drawable.bg_chip_danger, pos ? R.color.ok : R.color.danger,
+                type != Work.DayType.WERKTAG, v -> openDay(day, hist));
+    }
+
+    /** Antippen: ein Eintrag → direkt bearbeiten, mehrere → erst auswählen. */
+    private void openDay(Work.Day d, List<Prefs.Entry> hist) {
+        if (d.indexes.size() == 1) {
+            editEntry(d.indexes.get(0));
+            return;
+        }
+        String[] items = new String[d.indexes.size()];
+        for (int k = 0; k < items.length; k++) {
+            Prefs.Entry e = hist.get(d.indexes.get(k));
+            items[k] = e.isFreeDay() ? "Freier Tag (Abbau)" : Fmt.time(e.start) + " – " + Fmt.time(e.end);
+        }
+        new AlertDialog.Builder(a)
+                .setTitle(Fmt.dayOf(d.date) + " – welchen Einsatz?")
+                .setItems(items, (dlg, which) -> editEntry(d.indexes.get(which)))
+                .setNegativeButton("Abbrechen", null)
+                .show();
+    }
+
+    /** Überstundenkonto-Karte und grüne Auszahlungskarte. */
+    private void refreshAccount(Work.Month m, Work.Rules sur) {
+        accRows.removeAllViews();
         LocalDate startDate = Prefs.otStartDate(a);
         long limit = Prefs.otLimitMin(a) * Work.MIN;
         String limitTxt = Fmt.hoursFromMinutes(Prefs.otLimitMin(a)) + " h";
         YearMonth now = YearMonth.now();
-        YearMonth until = month.isAfter(now) ? month : now;
-        List<Work.Month> months = Work.account(all, startDate,
-                Prefs.startBalanceMin(a) * Work.MIN, limit, until, sur);
-
-        Work.Month m = null;
-        for (Work.Month x : months) if (x.ym.equals(month)) m = x;
+        boolean current = month.equals(now);
+        boolean future = month.isAfter(now);
+        String mName = month.getMonth().getDisplayName(TextStyle.FULL, Locale.GERMANY);
 
         if (m == null) {
             tvAccTitle.setText("Überstundenkonto");
-            tvBalance.setText("—");
-            tvBalance.setTextColor(a.getColor(R.color.text_secondary));
-            tvBalanceInfo.setText("Dieser Monat liegt vor deinem Startdatum (" + Fmt.dateOf(startDate)
-                    + ") und zählt nicht zum Konto.\nStartdatum und Start-Überstunden: ⚙ Einstellungen.");
-            tvOtSplit.setText("");
-            showPayout("Auszahlung " + monthName(month), "—", "Keine Abrechnung für diesen Monat.");
+            TextView t = text("Dieser Monat liegt vor deinem Startdatum (" + Fmt.dateOf(startDate)
+                    + ") und zählt nicht zum Konto. Startdatum und Start-Überstunden findest du unter Einstellungen → Überstunden.",
+                    13.5f, R.color.text_secondary, false);
+            accRows.addView(t);
+            showPayout("Auszahlung " + monthName(month), "—", "Keine Abrechnung für diesen Monat.", null, null);
             return;
         }
 
-        boolean current = month.equals(now);
-        boolean future = month.isAfter(now);
-        tvAccTitle.setText(current ? "Überstundenkonto – Stand heute" : "Überstundenkonto – Monatsende");
-        tvBalance.setText(Fmt.signed(m.endBal) + " h");
-        tvBalance.setTextColor(a.getColor(m.endBal < 0 ? R.color.danger : R.color.text));
-
-        boolean startMonth = m.from.getDayOfMonth() != 1 || m.from.equals(startDate);
-        String startLbl = startMonth ? "Start " + Fmt.dateOf(m.from) : "Monatsanfang";
-        tvBalanceInfo.setText(
-                pad(startLbl) + Fmt.signed(m.startBal) + " h\n"
-                        + pad("Überstunden Monat") + Fmt.signed(m.diff) + " h\n"
-                        + pad(current ? "= Stand heute" : "= Monatsende") + Fmt.signed(m.endBal) + " h");
-
-        // Aufteilung nach Zuschlag
-        Work.OtSplit o = m.ot;
-        if (o.total() > 0) {
-            StringBuilder sb = new StringBuilder("Überstunden nach Zuschlag:");
-            appendSplit(sb, "Mo–Fr", o.week, sur.week);
-            appendSplit(sb, "Sa bis " + Fmt.hoursInput(sur.satLowMin) + " h", o.satLow, sur.satLow);
-            appendSplit(sb, "Sa danach", o.satHigh, sur.satHigh);
-            appendSplit(sb, "Sonntag", o.sun, sur.sun);
-            appendSplit(sb, "Feiertag", o.hol, sur.hol);
-            sb.append(String.format(Locale.GERMANY, "\n%s Ø %.1f %%", pad("Durchschnitt"), o.averagePct(sur)));
-            tvOtSplit.setText(sb.toString());
-        } else {
-            tvOtSplit.setText("Noch keine Überstunden in diesem Monat.");
+        tvAccTitle.setText(current ? "Überstundenkonto – Stand heute" : "Überstundenkonto");
+        boolean startMonth = m.from.equals(startDate);
+        accRows.addView(accRow(startMonth ? "Start " + Fmt.dateOf(m.from) : "Monatsanfang", Fmt.signed(m.startBal) + " h",
+                R.color.text, false));
+        accRows.addView(accRow("Überstunden " + mName, Fmt.signed(m.diff) + " h",
+                m.diff >= 0 ? R.color.ok : R.color.danger, false));
+        View line = new View(a);
+        line.setBackgroundColor(a.getColor(R.color.line));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(1));
+        lp.topMargin = dp(10);
+        lp.bottomMargin = dp(6);
+        accRows.addView(line, lp);
+        accRows.addView(accRow(current ? "Kontostand heute" : "Kontostand Monatsende", Fmt.signed(m.endBal) + " h",
+                m.endBal < 0 ? R.color.danger : R.color.text, true));
+        if (!future) {
+            accRows.addView(accRow("Start " + month.plusMonths(1).getMonth().getDisplayName(TextStyle.FULL, Locale.GERMANY)
+                    + (current ? " (voraussichtlich)" : ""), Fmt.signed(m.carry) + " h", R.color.text, false));
         }
 
-        // Auszahlung – groß unten auf der Karte
+        // ---- Auszahlung ----
+        Work.OtSplit o = m.ot;
         double rate = Prefs.hourlyRate(a);
         String title = (current ? "Voraussichtliche Auszahlung " : "Auszahlung ") + monthName(month);
+        String avg = String.format(Locale.GERMANY, "Ø %.0f %% Zuschlag", o.averagePct(sur));
         if (m.payout > 0) {
-            double euro = Work.payoutEuro(m, rate, sur);
-            String detail = Fmt.hm(m.payout) + " h über " + limitTxt
-                    + String.format(Locale.GERMANY, " · Ø %.1f %% Zuschlag", o.averagePct(sur))
-                    + (rate > 0 ? String.format(Locale.GERMANY, "\n%.2f h × %s × %.3f",
-                            m.payout / (double) Work.HOUR, Fmt.euro(rate), 1 + o.averagePct(sur) / 100.0) : "")
-                    + "\nbrutto, vor Steuern und Abgaben"
-                    + (current ? "\nStand heute – endgültig am Monatsende" : "")
-                    + "\nNächster Monat startet mit " + Fmt.signed(m.carry) + " h";
+            String detail = Fmt.hm(m.payout) + " h über " + limitTxt + " · brutto, vor Steuern"
+                    + (current ? "\nStand heute – endgültig am Monatsende" : "");
             if (rate > 0) {
-                showPayout(title, "ca. " + Fmt.euro(euro), detail);
+                showPayout(title, Fmt.euro(Work.payoutEuro(m, rate, sur)), detail,
+                        Fmt.hm(m.payout) + " h ausgezahlt", avg);
             } else {
                 showPayout(title, Fmt.hm(m.payout) + " h",
-                        "Stundenlohn unter ⚙ Einstellungen eintragen,\ndann steht hier der Betrag in Euro.");
+                        "Stundenlohn unter Einstellungen → Überstunden eintragen, dann steht hier der Betrag in Euro.",
+                        null, avg);
             }
         } else {
-            long missing = limit - m.endBal;
-            String detail = (future ? "Noch keine Einträge.\n" : "")
-                    + "Auszahlung ab " + limitTxt + " – es fehlen noch " + Fmt.hm(missing) + " h"
-                    + (!current && !future ? "\nNächster Monat startet mit " + Fmt.signed(m.carry) + " h" : "");
-            showPayout(title, Fmt.euro(0), detail);
+            long missing = Math.max(0, limit - m.endBal);
+            showPayout(title, Fmt.euro(0), (future ? "Noch keine Einträge. " : "")
+                    + "Auszahlung ab " + limitTxt + " – es fehlen noch " + Fmt.hm(missing) + " h.", null, null);
         }
     }
 
-    private void showPayout(String title, String amount, String detail) {
+    private void showPayout(String title, String amount, String detail, String pill1, String pill2) {
         tvPayoutTitle.setText(title);
         tvPayoutAmount.setText(amount);
         tvPayoutDetail.setText(detail);
+        tvPayoutPill1.setText(pill1 == null ? "" : pill1);
+        tvPayoutPill2.setText(pill2 == null ? "" : pill2);
+        show(tvPayoutPill1, pill1 != null);
+        show(tvPayoutPill2, pill2 != null);
     }
 
     private static String monthName(YearMonth ym) {
         return ym.getMonth().getDisplayName(TextStyle.FULL, Locale.GERMANY) + " " + ym.getYear();
     }
 
-    private static void appendSplit(StringBuilder sb, String label, long ms, int pct) {
-        if (ms <= 0) return;
-        sb.append('\n').append(pad(label)).append(String.format(Locale.GERMANY, "%6s h  %3d %%", Fmt.hm(ms), pct));
+    // ---- kleine Bausteine für Liste und Konto ----
+
+    private View weekHeader(String t) {
+        TextView tv = text(t.toUpperCase(Locale.GERMANY), 11.5f, R.color.text_secondary, true);
+        tv.setLetterSpacing(0.05f);
+        tv.setPadding(dp(18), dp(12), dp(18), dp(4));
+        return tv;
     }
 
-    /** Text auf feste Breite auffüllen (für saubere Spalten in Monospace). */
-    private static String pad(String s) {
-        StringBuilder b = new StringBuilder(s);
-        while (b.length() < 18) b.append(' ');
-        return b.toString();
+    private View divider() {
+        View v = new View(a);
+        v.setBackgroundColor(a.getColor(R.color.line));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(1));
+        lp.setMarginStart(dp(72));
+        v.setLayoutParams(lp);
+        return v;
+    }
+
+    private CharSequence plain(String s) {
+        return s;
+    }
+
+    private View dayRow(LocalDate date, String times, CharSequence meta, String diff, int pillBg, int pillColor,
+                        boolean weekend, View.OnClickListener click) {
+        LinearLayout row = new LinearLayout(a);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(dp(14), dp(9), dp(14), dp(9));
+        if (click != null) {
+            TypedValue tv = new TypedValue();
+            a.getTheme().resolveAttribute(android.R.attr.selectableItemBackground, tv, true);
+            row.setBackgroundResource(tv.resourceId);
+            row.setOnClickListener(click);
+        }
+
+        LinearLayout badge = new LinearLayout(a);
+        badge.setOrientation(LinearLayout.VERTICAL);
+        badge.setGravity(Gravity.CENTER);
+        badge.setBackgroundResource(weekend ? R.drawable.bg_badge_we : R.drawable.bg_badge);
+        int bc = weekend ? R.color.primary : R.color.text;
+        TextView wd = text(WD[date.getDayOfWeek().getValue() - 1], 10.5f, weekend ? R.color.primary : R.color.text_secondary, true);
+        wd.setIncludeFontPadding(false);
+        TextView dn = text(String.format(Locale.GERMANY, "%02d", date.getDayOfMonth()), 17, bc, true);
+        dn.setIncludeFontPadding(false);
+        badge.addView(wd);
+        badge.addView(dn);
+        row.addView(badge, new LinearLayout.LayoutParams(dp(46), dp(46)));
+
+        LinearLayout mid = new LinearLayout(a);
+        mid.setOrientation(LinearLayout.VERTICAL);
+        TextView t1 = text(times, 14.5f, R.color.text, true);
+        t1.setFontFeatureSettings("tnum");
+        TextView t2 = new TextView(a);
+        t2.setText(meta);
+        t2.setTextSize(12.5f);
+        t2.setTextColor(a.getColor(R.color.text_secondary));
+        mid.addView(t1);
+        mid.addView(t2);
+        LinearLayout.LayoutParams mp = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1);
+        mp.setMarginStart(dp(12));
+        mp.setMarginEnd(dp(8));
+        row.addView(mid, mp);
+
+        TextView pill = text(diff, 13, pillColor, true);
+        pill.setBackgroundResource(pillBg);
+        pill.setPadding(dp(10), dp(5), dp(10), dp(5));
+        pill.setFontFeatureSettings("tnum");
+        row.addView(pill);
+        return row;
+    }
+
+    private View accRow(String label, String value, int valueColor, boolean bold) {
+        LinearLayout row = new LinearLayout(a);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setPadding(0, dp(5), 0, dp(5));
+        TextView l = text(label, 14.5f, bold ? R.color.text : R.color.text_secondary, bold);
+        TextView v = text(value, 14.5f, valueColor, true);
+        v.setFontFeatureSettings("tnum");
+        row.addView(l, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+        row.addView(v);
+        return row;
+    }
+
+    private TextView text(String s, float sp, int color, boolean bold) {
+        TextView t = new TextView(a);
+        t.setText(s);
+        t.setTextSize(sp);
+        t.setTextColor(a.getColor(color));
+        if (bold) t.setTypeface(Typeface.DEFAULT_BOLD);
+        return t;
     }
 
     // =====================================================================
@@ -290,10 +459,13 @@ final class OvertimeTab {
         final Button bFrom = plainButton();
         final Button bTo = plainButton();
         TextView lbl = new TextView(a);
-        lbl.setText("Pause in Minuten (leer lassen = automatisch nach Arbeitszeitgesetz)");
+        lbl.setText("Pause in Minuten (leer lassen = automatisch: ab 6 h, max. 45 Min.)");
         lbl.setTextColor(a.getColor(R.color.text_secondary));
         lbl.setPadding(0, dp(10), 0, 0);
         final EditText etPause = new EditText(a);
+        etPause.setBackgroundResource(R.drawable.bg_field);
+        etPause.setPadding(dp(14), dp(12), dp(14), dp(12));
+        etPause.setTextColor(a.getColor(R.color.text));
         etPause.setInputType(InputType.TYPE_CLASS_NUMBER);
         etPause.setHint("automatisch");
         if (e != null && e.pause >= 0) etPause.setText(String.valueOf(e.pause));
@@ -461,35 +633,17 @@ final class OvertimeTab {
         a.startActivity(Intent.createChooser(send, "Arbeitszeit teilen"));
     }
 
-    // =====================================================================
-    // Hilfsfunktionen für die Tabelle
-    // =====================================================================
-
-    private TableRow row(int bg, boolean bold, int color, String... cells) {
-        TableRow r = new TableRow(a);
-        if (bg != 0) r.setBackgroundColor(bg);
-        for (int i = 0; i < cells.length; i++) {
-            int gravity = i <= 1 ? Gravity.START : Gravity.END;
-            r.addView(cell(cells[i], bold, color, gravity));
-        }
-        return r;
-    }
-
-    private TextView cell(String text, boolean bold, int color, int gravity) {
-        TextView t = new TextView(a);
-        t.setText(text);
-        t.setTextSize(13);
-        t.setTextColor(color);
-        t.setGravity(gravity);
-        t.setPadding(dp(4), dp(7), dp(4), dp(7));
-        if (bold) t.setTypeface(Typeface.DEFAULT_BOLD);
-        return t;
-    }
-
     private Button plainButton() {
         Button b = new Button(a);
         b.setAllCaps(false);
         b.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
+        b.setBackgroundResource(R.drawable.bg_btn_tonal);
+        b.setTextColor(a.getColor(R.color.text));
+        b.setStateListAnimator(null);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(50));
+        lp.topMargin = dp(8);
+        b.setLayoutParams(lp);
+        b.setPadding(dp(18), 0, dp(18), 0);
         return b;
     }
 
@@ -501,7 +655,7 @@ final class OvertimeTab {
         Toast.makeText(a, text, Toast.LENGTH_LONG).show();
     }
 
-    /** Sichtbarkeit für den Reiter-Wechsel. */
+    /** Sichtbarkeit umschalten. */
     static void show(View v, boolean visible) {
         v.setVisibility(visible ? View.VISIBLE : View.GONE);
     }

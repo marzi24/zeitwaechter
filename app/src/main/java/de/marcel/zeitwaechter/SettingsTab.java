@@ -37,8 +37,9 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Das Einstellungsmenü (Zahnrad oben rechts): Einrichtung, Arbeitsort, Erinnerungen,
- * Überstunden, Zuschläge und Feiertage – alles an einem Ort.
+ * Einstellungen: eine Liste mit Zusammenfassungen. Ein Tipp auf eine Zeile öffnet
+ * die passende Detailseite (Einrichtung, Arbeitsort, Erkennung, Grenzen, Soll & Pause,
+ * Überstunden, Zuschläge, Feiertage).
  */
 final class SettingsTab {
 
@@ -53,8 +54,16 @@ final class SettingsTab {
     private final EditText etSurWeek, etSurSatLow, etSatLowHours, etSurSatHigh, etSurSun, etSurHol, etExtraHol;
     private final Switch swEnabled;
     private final Spinner spState;
-    private final Button btnStartDate;
+    private final Button btnStartDate, btnSaveAll;
+    private final Switch swAutoList;
+    private final TextView tvDetailTitle, tvSetupTitle, tvSetupSub;
+    private final TextView tvRowOrt, tvRowAuto, tvRowWege, tvRowGrenzen, tvRowWarn, tvRowSoll, tvRowOt,
+            tvRowZuschlag, tvRowFeiertage;
+    private final android.widget.ImageView setupIcon;
+    private final View setupIconBg;
+    private final View[] sections;
     private LocalDate startDate;
+    private View openSection;
 
     SettingsTab(MainActivity activity) {
         a = activity;
@@ -91,6 +100,48 @@ final class SettingsTab {
         etSurHol = a.findViewById(R.id.etSurHol);
         etExtraHol = a.findViewById(R.id.etExtraHol);
         spState = a.findViewById(R.id.spState);
+        btnSaveAll = a.findViewById(R.id.btnSaveAll);
+        swAutoList = a.findViewById(R.id.swAutoList);
+        tvDetailTitle = a.findViewById(R.id.tvDetailTitle);
+        tvSetupTitle = a.findViewById(R.id.tvSetupTitle);
+        tvSetupSub = a.findViewById(R.id.tvSetupSub);
+        setupIcon = a.findViewById(R.id.setupIcon);
+        setupIconBg = a.findViewById(R.id.setupIconBg);
+        tvRowOrt = a.findViewById(R.id.tvRowOrt);
+        tvRowAuto = a.findViewById(R.id.tvRowAuto);
+        tvRowWege = a.findViewById(R.id.tvRowWege);
+        tvRowGrenzen = a.findViewById(R.id.tvRowGrenzen);
+        tvRowWarn = a.findViewById(R.id.tvRowWarn);
+        tvRowSoll = a.findViewById(R.id.tvRowSoll);
+        tvRowOt = a.findViewById(R.id.tvRowOt);
+        tvRowZuschlag = a.findViewById(R.id.tvRowZuschlag);
+        tvRowFeiertage = a.findViewById(R.id.tvRowFeiertage);
+        sections = new View[]{
+                a.findViewById(R.id.secSetup), a.findViewById(R.id.secOrt), a.findViewById(R.id.secErkennung),
+                a.findViewById(R.id.secGrenzen), a.findViewById(R.id.secSoll), a.findViewById(R.id.secOt),
+                a.findViewById(R.id.secZuschlag), a.findViewById(R.id.secFeiertage)};
+
+        // ---- Liste: Zeilen öffnen Detailseiten ----
+        a.findViewById(R.id.rowSetup).setOnClickListener(v -> openSetup());
+        a.findViewById(R.id.rowOrt).setOnClickListener(v -> openDetail(R.id.secOrt, "Arbeitsort"));
+        a.findViewById(R.id.rowWege).setOnClickListener(v -> openDetail(R.id.secErkennung, "Erkennung & Wege"));
+        a.findViewById(R.id.rowGrenzen).setOnClickListener(v -> openDetail(R.id.secGrenzen, "Grenzen & Warnungen"));
+        a.findViewById(R.id.rowWarn).setOnClickListener(v -> openDetail(R.id.secGrenzen, "Grenzen & Warnungen"));
+        a.findViewById(R.id.rowSoll).setOnClickListener(v -> openDetail(R.id.secSoll, "Soll & Pause"));
+        a.findViewById(R.id.rowOt).setOnClickListener(v -> openDetail(R.id.secOt, "Überstunden"));
+        a.findViewById(R.id.rowZuschlag).setOnClickListener(v -> openDetail(R.id.secZuschlag, "Zuschläge"));
+        a.findViewById(R.id.rowFeiertage).setOnClickListener(v -> openDetail(R.id.secFeiertage, "Feiertage"));
+        a.findViewById(R.id.rowAuto).setOnClickListener(v -> swAutoList.toggle());
+        a.findViewById(R.id.btnBack).setOnClickListener(v -> closeDetail());
+        swAutoList.setOnCheckedChangeListener((b, on) -> {
+            if (on == Prefs.trackingEnabled(a)) return;
+            Prefs.setTrackingEnabled(a, on);
+            swEnabled.setChecked(on);
+            GeofenceHelper.register(a);
+            refreshList();
+            a.refreshAll();
+            a.postRefresh();
+        });
 
         // ---- Einrichtung ----
         a.findViewById(R.id.btnPermLocation).setOnClickListener(v -> requestBasicPermissions());
@@ -139,7 +190,7 @@ final class SettingsTab {
             }
         });
 
-        a.findViewById(R.id.btnSaveAll).setOnClickListener(v -> saveAll());
+        btnSaveAll.setOnClickListener(v -> saveAll());
 
         fillFields();
         showVersion();
@@ -150,6 +201,7 @@ final class SettingsTab {
     // =====================================================================
 
     void refresh() {
+        refreshList();
         tvPerms.setText(mark(GeofenceHelper.hasFine(a)) + "  Standort (genau)\n"
                 + mark(GeofenceHelper.hasBackground(a)) + "  Standort „Immer zulassen“\n"
                 + mark(notificationsAllowed()) + "  Benachrichtigungen\n"
@@ -157,6 +209,67 @@ final class SettingsTab {
                 + mark(SessionManager.canExact(a)) + "  Pünktliche Wecker\n"
                 + mark(Prefs.hasWorkLocation(a)) + "  Arbeitsort gespeichert");
         tvGeofence.setText("Ortserkennung: " + Prefs.geofenceStatus(a));
+    }
+
+    // =====================================================================
+    // Liste und Detailseiten
+    // =====================================================================
+
+    boolean isDetailOpen() {
+        return openSection != null;
+    }
+
+    void openSetup() {
+        openDetail(R.id.secSetup, "Einrichtung");
+    }
+
+    private void openDetail(int sectionId, String title) {
+        fillFields(); // immer den gespeicherten Stand zeigen
+        for (View v : sections) OvertimeTab.show(v, v.getId() == sectionId);
+        openSection = a.findViewById(sectionId);
+        tvDetailTitle.setText(title);
+        // Einrichtung und Arbeitsort haben eigene Knöpfe
+        OvertimeTab.show(btnSaveAll, sectionId != R.id.secSetup && sectionId != R.id.secOrt);
+        refresh();
+        a.showSettingsPage(true);
+    }
+
+    void closeDetail() {
+        openSection = null;
+        hideKeyboard();
+        refreshList();
+        a.showSettingsPage(false);
+    }
+
+    /** Zusammenfassungen in der Liste aktualisieren. */
+    private void refreshList() {
+        boolean ok = setupComplete();
+        tvSetupTitle.setText(ok ? "Alles eingerichtet" : "Einrichtung unvollständig");
+        tvSetupSub.setText(ok ? "Standort, Benachrichtigungen, Akku, Wecker" : "Hier tippen und die fehlenden Punkte erlauben");
+        setupIcon.setImageResource(ok ? R.drawable.ic_check : R.drawable.ic_alert);
+        setupIcon.setImageTintList(android.content.res.ColorStateList.valueOf(a.getColor(ok ? R.color.ok : R.color.warn)));
+        setupIconBg.setBackgroundResource(ok ? R.drawable.bg_icon_ok : R.drawable.bg_icon_warn);
+
+        tvRowOrt.setText(Prefs.hasWorkLocation(a) ? "Gespeichert · Radius " + Prefs.radius(a) + " m" : "Noch nicht festgelegt");
+        boolean auto = Prefs.trackingEnabled(a);
+        if (swAutoList.isChecked() != auto) swAutoList.setChecked(auto);
+        tvRowAuto.setText(auto ? "Kommen & Gehen per Standort" : "Aus – nur von Hand einstempeln");
+        tvRowWege.setText("Morgens +" + Prefs.offsetMin(a) + " Min · abends −" + Prefs.offsetOutMin(a) + " Min");
+        int lo = Prefs.latestOutMin(a);
+        tvRowGrenzen.setText(Fmt.hoursFromMinutes(Prefs.maxWorkMin(a)) + " h netto"
+                + (lo >= 0 ? String.format(Locale.GERMANY, " · spätestens %02d:%02d Uhr", lo / 60, lo % 60) : ""));
+        List<Integer> warn = Prefs.warnMinutes(a);
+        StringBuilder w = new StringBuilder();
+        for (int m : warn) w.append(w.length() > 0 ? " · " : "").append(m);
+        tvRowWarn.setText(warn.isEmpty() ? "Nur zur Grenze" : w + " Min. vorher");
+        Work.Rules r = Prefs.rules(a);
+        tvRowSoll.setText(Fmt.hoursFromMinutes(r.sollMin) + " h Mo–Fr · Pause ab "
+                + Fmt.hoursFromMinutes(r.pauseAfterMin) + " h, max. " + r.pauseMin + " Min.");
+        tvRowOt.setText("Auszahlung ab " + Fmt.hoursFromMinutes(Prefs.otLimitMin(a)) + " h · "
+                + (Prefs.hourlyRate(a) > 0 ? Fmt.euro(Prefs.hourlyRate(a)) + "/h" : "Stundenlohn fehlt"));
+        tvRowZuschlag.setText(r.week + " · " + r.satLow + "/" + r.satHigh + " · " + r.sun + " · " + r.hol + " %");
+        tvRowFeiertage.setText(Holidays.STATE_NAMES[Holidays.stateIndex(r.state)]
+                + (r.extraHolidays.isEmpty() ? "" : " + " + r.extraHolidays));
     }
 
     /** Ist alles Nötige erlaubt und ein Arbeitsort gespeichert? */
@@ -181,7 +294,7 @@ final class SettingsTab {
     private void showVersion() {
         try {
             String name = a.getPackageManager().getPackageInfo(a.getPackageName(), 0).versionName;
-            tvVersion.setText("Zeitwächter Version " + name);
+            tvVersion.setText("Zeitwächter " + name);
         } catch (Exception e) {
             tvVersion.setText("");
         }
@@ -314,7 +427,8 @@ final class SettingsTab {
         GeofenceHelper.register(a);
         SessionManager.historyChanged(a); // Höchstarbeitszeit/Pause können die Grenze verändern
         fillFields();
-        toast("Alle Einstellungen gespeichert ✔");
+        toast("Gespeichert ✔");
+        closeDetail();
         a.refreshAll();
         a.postRefresh();
     }

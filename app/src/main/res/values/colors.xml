@@ -1,19 +1,32 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="primary">#1E5AA8</color>
-    <color name="primary_dark">#163F75</color>
-    <color name="bg">#F2F4F7</color>
-    <color name="card">#FFFFFF</color>
-    <color name="text">#1B1F24</color>
-    <color name="text_secondary">#5B6573</color>
-    <color name="ok">#2E7D32</color>
-    <color name="warn">#E08A00</color>
-    <color name="danger">#C62828</color>
-    <color name="row_alt">#F3F5F8</color>
-    <color name="payout_bg">#E8F1FC</color>
+    <color name="primary">#3D5AFE</color>
+    <color name="primary_dark">#12151C</color>
+    <color name="primary_soft">#E6EAFF</color>
     <color name="on_primary">#FFFFFF</color>
-    <color name="warn_bg">#FFF3D6</color>
-    <color name="payout_card_start">#2E7D32</color>
-    <color name="payout_card_end">#1B5E20</color>
+    <color name="bg">#F4F6FB</color>
+    <color name="card">#FFFFFF</color>
+    <color name="surface2">#EEF1F8</color>
+    <color name="text">#12151C</color>
+    <color name="text_secondary">#5D6575</color>
+    <color name="line">#E3E7F0</color>
+    <color name="ok">#1E9E5A</color>
+    <color name="ok_soft">#DDF5E8</color>
+    <color name="warn">#E8920C</color>
+    <color name="warn_soft">#FFF1D9</color>
+    <color name="danger">#E5383B</color>
+    <color name="danger_soft">#FDE3E3</color>
+    <color name="ring_track">#E6EAF4</color>
+    <color name="row_alt">#F3F5F8</color>
+    <color name="warn_bg">#FFF1D9</color>
+    <color name="nav_bg">#FFFFFF</color>
+    <color name="payout_card_start">#2DB56C</color>
+    <color name="payout_card_end">#0E6B3A</color>
     <color name="on_payout">#FFFFFF</color>
+    <color name="pill_on_payout">#2EFFFFFF</color>
+    <color name="seg_week">#3D5AFE</color>
+    <color name="seg_sat_low">#7C8CFF</color>
+    <color name="seg_sat_high">#F2A33A</color>
+    <color name="seg_sun">#B05BE0</color>
+    <color name="seg_hol">#E5383B</color>
 </resources>
