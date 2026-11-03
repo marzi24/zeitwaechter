@@ -142,7 +142,11 @@ final class OvertimeTab {
             // geschützte Leerzeichen: ein Eintrag bricht nicht mitten durch
             sb.append(("\u00A0" + names[i] + " " + Fmt.hm(vals[i]) + " · " + pct[i] + " %").replace(" ", "\u00A0"));
         }
-        if (sb.length() == 0) sb.append("Noch keine Überstunden in diesem Monat.");
+        if (sb.length() == 0) {
+            sb.append("Noch keine Plus-Stunden in diesem Monat.");
+        } else {
+            sb.insert(0, "Plus-Stunden nach Tagesart:\n");
+        }
         tvLegend.setText(sb);
     }
 
@@ -372,8 +376,10 @@ final class OvertimeTab {
         int bc = weekend ? R.color.primary : R.color.text;
         TextView wd = text(WD[date.getDayOfWeek().getValue() - 1], 10.5f, weekend ? R.color.primary : R.color.text_secondary, true);
         wd.setIncludeFontPadding(false);
+        wd.setGravity(Gravity.CENTER);
         TextView dn = text(String.format(Locale.GERMANY, "%02d", date.getDayOfMonth()), 17, bc, true);
         dn.setIncludeFontPadding(false);
+        dn.setGravity(Gravity.CENTER);
         badge.addView(wd);
         badge.addView(dn);
         row.addView(badge, new LinearLayout.LayoutParams(dp(46), dp(46)));

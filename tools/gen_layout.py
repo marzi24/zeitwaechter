@@ -196,8 +196,7 @@ active_box = ll([
                                                     'android:gravity="center_vertical"']),
     ], vertical=False, extra=['android:gravity="center_vertical"']),
     ll([
-        btn('btnEnd', 'Ausgestempelt', 'BtnFilled', w='0dp', extra=['android:layout_weight="1"',
-                                                                     'android:drawableStart="@drawable/ic_logout"']),
+        btn('btnEnd', 'Ausgestempelt', 'BtnFilled', w='0dp', extra=['android:layout_weight="1"']),
         btn('btnDiscard', 'Verwerfen', 'BtnTonal', w='0dp', extra=['android:layout_weight="0.62"',
                                                                    'android:layout_marginStart="8dp"']),
     ], vertical=False, extra=['android:layout_marginTop="14dp"']),
@@ -205,8 +204,7 @@ active_box = ll([
 
 start_card = section([
     active_box,
-    btn('btnStart', 'Jetzt einstempeln', 'BtnFilled', extra=['android:drawableStart="@drawable/ic_login"',
-                                                              'android:visibility="gone"']),
+    btn('btnStart', 'Jetzt einstempeln', 'BtnFilled', extra=['android:visibility="gone"']),
 ])
 
 week_card = section([

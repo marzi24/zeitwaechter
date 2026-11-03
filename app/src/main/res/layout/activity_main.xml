@@ -399,8 +399,7 @@
                                 style="@style/BtnFilled"
                                 android:layout_width="0dp"
                                 android:text="Ausgestempelt"
-                                android:layout_weight="1"
-                                android:drawableStart="@drawable/ic_logout" />
+                                android:layout_weight="1" />
                             <Button
                                 android:id="@+id/btnDiscard"
                                 style="@style/BtnTonal"
@@ -417,7 +416,6 @@
                         style="@style/BtnFilled"
                         android:layout_width="match_parent"
                         android:text="Jetzt einstempeln"
-                        android:drawableStart="@drawable/ic_login"
                         android:visibility="gone" />
                 </LinearLayout>
 

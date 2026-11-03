@@ -108,6 +108,13 @@ public class MainActivity extends Activity {
         overtime = new OvertimeTab(this);
         settings = new SettingsTab(this);
 
+        // „+ Eintrag“ beim Runterscrollen ausblenden, damit er keine Zahlen verdeckt
+        scrollZeit.setOnScrollChangeListener((v, x, y, ox, oy) -> {
+            if (currentTab != TAB_ZEIT) return;
+            if (y > oy + 4) fab.animate().translationY(fab.getHeight() * 2f).setDuration(150).start();
+            else if (y < oy - 4 || y == 0) fab.animate().translationY(0).setDuration(150).start();
+        });
+
         findViewById(R.id.navHeute).setOnClickListener(v -> showTab(TAB_HEUTE));
         findViewById(R.id.navZeit).setOnClickListener(v -> showTab(TAB_ZEIT));
         findViewById(R.id.navSettings).setOnClickListener(v -> showTab(TAB_SETTINGS));

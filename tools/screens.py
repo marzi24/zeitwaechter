@@ -122,12 +122,12 @@ ot_start = (n.replace(day=1) - timedelta(days=20)).replace(day=1).date().toordin
 
 adb("shell", "cmd", "uimode", "night", "no")
 # 1) Heute – noch im Minus
-write_prefs(prefs(hist, True, ms(n - timedelta(hours=3, minutes=11)), ot_start=ot_start))
+write_prefs(prefs(hist, True, ms(n - timedelta(hours=3, minutes=11)), latest_out=-1, ot_start=ot_start))
 launch(0)
 shot("1_heute_minus")
 
 # 2) Heute – im Plus
-write_prefs(prefs(hist, True, ms(n - timedelta(hours=9, minutes=34)), ot_start=ot_start))
+write_prefs(prefs(hist, True, ms(n - timedelta(hours=9, minutes=34)), latest_out=-1, ot_start=ot_start))
 launch(0)
 shot("2_heute_plus")
 
