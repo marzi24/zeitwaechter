@@ -193,6 +193,11 @@ public class MainActivity extends Activity {
 
     /** Aus der Benachrichtigung "Startzeit anpassen" geöffnet? Dann gleich die Uhrzeitauswahl zeigen. */
     private void handleIntent(Intent intent) {
+        // Direkt einen Bereich öffnen (z. B. für automatische Screenshots): --ei tab 0/1/2
+        if (intent != null && intent.hasExtra("tab")) {
+            showTab(intent.getIntExtra("tab", TAB_HEUTE));
+            intent.removeExtra("tab");
+        }
         if (intent != null && intent.getBooleanExtra(EXTRA_EDIT_START, false)) {
             intent.removeExtra(EXTRA_EDIT_START);
             showTab(TAB_HEUTE);
