@@ -180,7 +180,7 @@ stepper_btn = lambda id, text: el('TextView', [f'android:id="@+id/{id}"', 'andro
 active_box = ll([
     ll([
         ll([
-            tv(text='Eingestempelt', extra=['android:textColor="@color/text_secondary"', 'android:textSize="13sp"']),
+            tv(id='tvStartLabel', text='Eingestempelt', extra=['android:textColor="@color/text_secondary"', 'android:textSize="13sp"']),
             tv(id='tvStartTime', extra=['android:textColor="@color/text"', 'android:textSize="21sp"',
                                         'android:textStyle="bold"', 'android:fontFeatureSettings="tnum"']),
         ], w='0dp', extra=['android:layout_weight="1"']),

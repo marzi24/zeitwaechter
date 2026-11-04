@@ -86,7 +86,13 @@ def write_prefs(xml):
 
 def launch(tab):
     adb("shell", "am", "start", "-n", f"{PKG}/.MainActivity", "--ei", "tab", str(tab))
-    time.sleep(4)
+    # warten, bis die App wirklich im Vordergrund ist und gezeichnet hat
+    for _ in range(30):
+        out = adb("shell", "dumpsys", "activity", "activities", check=False)
+        if re.search(r"(topResumedActivity|mResumedActivity).*" + re.escape(PKG), out):
+            break
+        time.sleep(1)
+    time.sleep(3)
 
 
 def shot(name):
@@ -115,6 +121,9 @@ def swipe_up(times=1):
         time.sleep(1)
 
 
+# Feste Uhrzeit: Dienstag, 3. November 2026, 14:30 Berlin (= 13:30 UTC) – Bilder unabhängig von der Laufzeit
+adb("shell", "settings", "put", "global", "auto_time", "0", check=False)
+adb("shell", "date", "-u", "110313302026.00", check=False)
 n = now()
 print("Emulator-Zeit:", n, flush=True)
 hist = sample_history(n)
@@ -149,7 +158,7 @@ if tap_text("Zuschläge"):
 # 5) Dunkel: 2. Einsatz, Grenze in 14 Minuten
 adb("shell", "cmd", "uimode", "night", "yes")
 time.sleep(2)
-earlier = {"s": ms(n - timedelta(hours=11, minutes=10)), "e": ms(n - timedelta(hours=2, minutes=40)),
+earlier = {"s": ms(n - timedelta(hours=8)), "e": ms(n - timedelta(hours=2, minutes=30)),
            "q": "automatisch", "p": -1}
 cap = n + timedelta(minutes=14)
 write_prefs(prefs(hist + [earlier], True, ms(n - timedelta(hours=1, minutes=19)),

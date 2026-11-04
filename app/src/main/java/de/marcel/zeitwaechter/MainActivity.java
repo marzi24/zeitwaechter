@@ -52,7 +52,7 @@ public class MainActivity extends Activity {
     // Heute
     private TextView tvDate, tvStatusChip, tvRingSmall, tvRingBig, tvRingUnit, tvPlusChip;
     private TextView tvDeadlineLabel, tvDeadline, tvDeadlineNote, tvStatGross, tvStatNet, tvStatDiff;
-    private TextView tvStartTime, tvAlertTitle, tvAlertText, tvWeekChip;
+    private TextView tvStartTime, tvStartLabel, tvAlertTitle, tvAlertText, tvWeekChip;
     private TextView btnEditStart, btnMinus, btnPlus;
     private View setupHint, alertCard, activeBox;
     private Button btnStart, btnEnd, btnDiscard;
@@ -84,6 +84,7 @@ public class MainActivity extends Activity {
         tvStatNet = findViewById(R.id.tvStatNet);
         tvStatDiff = findViewById(R.id.tvStatDiff);
         tvStartTime = findViewById(R.id.tvStartTime);
+        tvStartLabel = findViewById(R.id.tvStartLabel);
         tvAlertTitle = findViewById(R.id.tvAlertTitle);
         tvAlertText = findViewById(R.id.tvAlertText);
         tvWeekChip = findViewById(R.id.tvWeekChip);
@@ -378,7 +379,7 @@ public class MainActivity extends Activity {
             if (di.byClock) {
                 tvDeadlineNote.setText(dayPrefix + "Späteste Ausstempelzeit · 10-h-Grenze wäre " + Fmt.timeSmart(di.workDeadline));
             } else if (di.earlierSessions > 0) {
-                tvDeadlineNote.setText(dayPrefix + "Vorher heute " + Fmt.duration(di.earlierNet) + " netto · Lücke zählt als Pause");
+                tvDeadlineNote.setText(dayPrefix + "Vorher in dieser Schicht " + Fmt.duration(di.earlierNet) + " netto · Lücke zählt als Pause");
             } else {
                 tvDeadlineNote.setText(dayPrefix + Fmt.hoursFromMinutes(Prefs.maxWorkMin(this)) + " h + "
                         + rules.pauseMin + " Min. Pause"
@@ -390,10 +391,16 @@ public class MainActivity extends Activity {
             OvertimeTab.show(alertCard, alarm);
             if (alarm) {
                 tvAlertTitle.setText(left > 0 ? "Gleich ausstempeln!" : "Grenze überschritten!");
-                tvAlertText.setText(di.byClock
-                        ? "Um " + Fmt.time(di.clockDeadline) + " Uhr ist Schluss – spätere Zeiten sind nicht erlaubt."
-                        : "Um " + Fmt.timeSmart(t.deadline) + " erreichst du die "
-                        + Fmt.hoursFromMinutes(Prefs.maxWorkMin(this)) + "-h-Grenze.");
+                String limit = Fmt.hoursFromMinutes(Prefs.maxWorkMin(this)) + "-h-Grenze";
+                if (di.byClock) {
+                    tvAlertText.setText(left > 0
+                            ? "Um " + Fmt.time(di.clockDeadline) + " Uhr ist Schluss – spätere Zeiten sind nicht erlaubt."
+                            : "Seit " + Fmt.time(di.clockDeadline) + " Uhr ist Schluss – bitte sofort ausstempeln.");
+                } else {
+                    tvAlertText.setText(left > 0
+                            ? "Um " + Fmt.time(t.deadline) + " Uhr erreichst du die " + limit + "."
+                            : "Die " + limit + " wurde um " + Fmt.time(t.deadline) + " Uhr erreicht – bitte sofort ausstempeln.");
+                }
             }
             btnEnd.setBackgroundResource(alarm ? R.drawable.bg_btn_danger : R.drawable.bg_btn_filled);
 
@@ -406,7 +413,9 @@ public class MainActivity extends Activity {
             // ---- Stempel-Karte ----
             OvertimeTab.show(activeBox, true);
             OvertimeTab.show(btnStart, false);
-            tvStartTime.setText(Fmt.timeSmart(start) + " Uhr");
+            tvStartTime.setText(Fmt.time(start) + " Uhr");
+            tvStartLabel.setText(Work.day(start).equals(LocalDate.now())
+                    ? "Eingestempelt" : "Eingestempelt am " + Fmt.day(start));
         } else {
             OvertimeTab.show(alertCard, false);
             OvertimeTab.show(activeBox, false);
