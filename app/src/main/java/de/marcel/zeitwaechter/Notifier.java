@@ -87,6 +87,7 @@ final class Notifier {
         Work.DayInfo di = SessionManager.dayInfo(c, start);
         long dl = di.deadline;
         String text = "Eingestempelt seit " + Fmt.time(start) + " (geschätzt)";
+        if (Prefs.PLACE_HOME.equals(Prefs.sessionPlace(c))) text = "🏠 Homeoffice · " + text;
         if (di.earlierSessions > 0) {
             text += " · " + (di.earlierSessions + 1) + ". Einsatz heute, vorher "
                     + Fmt.duration(di.earlierNet) + " netto";

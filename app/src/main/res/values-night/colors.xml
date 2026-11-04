@@ -29,4 +29,6 @@
     <color name="seg_sat_high">#FFB547</color>
     <color name="seg_sun">#D08CF5</color>
     <color name="seg_hol">#FF6B6E</color>
+    <color name="home">#4FD1C5</color>
+    <color name="home_soft">#12302D</color>
 </resources>

@@ -44,7 +44,7 @@ final class OvertimeTab {
     private final MainActivity a;
     private YearMonth month = YearMonth.now();
 
-    private final TextView tvMonth, tvMonthOt, tvLegend, tvIst, tvSoll, tvKontoEnde, tvAccTitle,
+    private final TextView tvMonth, tvMonthOt, tvLegend, tvIst, tvSoll, tvKontoEnde, tvAccTitle, tvPlaces,
             tvPayoutTitle, tvPayoutAmount, tvPayoutDetail, tvPayoutPill1, tvPayoutPill2;
     private final SegmentBarView segBar;
     private final LinearLayout dayList, accRows;
@@ -57,6 +57,7 @@ final class OvertimeTab {
         tvIst = a.findViewById(R.id.tvIst);
         tvSoll = a.findViewById(R.id.tvSoll);
         tvKontoEnde = a.findViewById(R.id.tvKontoEnde);
+        tvPlaces = a.findViewById(R.id.tvPlaces);
         tvAccTitle = a.findViewById(R.id.tvAccTitle);
         tvPayoutTitle = a.findViewById(R.id.tvPayoutTitle);
         tvPayoutAmount = a.findViewById(R.id.tvPayoutAmount);
@@ -142,12 +143,31 @@ final class OvertimeTab {
             // geschützte Leerzeichen: ein Eintrag bricht nicht mitten durch
             sb.append(("\u00A0" + names[i] + " " + Fmt.hm(vals[i]) + " · " + pct[i] + " %").replace(" ", "\u00A0"));
         }
+        refreshPlaces(days);
         if (sb.length() == 0) {
             sb.append("Noch keine Plus-Stunden in diesem Monat.");
         } else {
             sb.insert(0, "Plus-Stunden nach Tagesart:\n");
         }
         tvLegend.setText(sb);
+    }
+
+    /** Zusammenfassung der Arbeitsorte im Monat. */
+    private void refreshPlaces(List<Work.Day> days) {
+        Work.PlaceStats p = Work.placeStats(days);
+        if (p.office + p.home + p.mixed == 0) {
+            tvPlaces.setText("Arbeitsorte: noch keine Einträge");
+            return;
+        }
+        SpannableStringBuilder sb = new SpannableStringBuilder("Arbeitsorte:  ");
+        sb.append("🏢 " + p.office + " Büro   ");
+        int st = sb.length();
+        sb.append("🏠 " + p.home + " Homeoffice");
+        sb.setSpan(new ForegroundColorSpan(a.getColor(R.color.home)), st, sb.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        sb.setSpan(new StyleSpan(Typeface.BOLD), st, sb.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        if (p.mixed > 0) sb.append("   🔀 " + p.mixed + " gemischt");
+        if (p.homeNet > 0) sb.append("\nIm Homeoffice gearbeitet: " + Fmt.hm(p.homeNet) + " h");
+        tvPlaces.setText(sb);
     }
 
     /** Tagesliste, neueste Tage oben, gruppiert nach Kalenderwoche. */
@@ -159,9 +179,10 @@ final class OvertimeTab {
             long start = Prefs.start(a);
             long gross = Math.max(0, Work.toMinute(System.currentTimeMillis()) - Work.toMinute(start));
             dayList.addView(weekHeader("Läuft gerade"));
-            dayList.addView(dayRow(Work.day(start), Fmt.time(start) + " – jetzt",
-                    plain("Netto bisher " + Fmt.hm(Work.netForGross(gross, sur))), "läuft", R.drawable.bg_chip_primary,
-                    R.color.primary, false, null));
+            boolean home = Prefs.PLACE_HOME.equals(Prefs.sessionPlace(a));
+            dayList.addView(dayRow(Work.day(start), (home ? "🏠 " : "") + Fmt.time(start) + " – jetzt",
+                    plain((home ? "Homeoffice · " : "") + "Netto bisher " + Fmt.hm(Work.netForGross(gross, sur))),
+                    "läuft", R.drawable.bg_chip_primary, R.color.primary, false, null));
         }
         if (days.isEmpty()) {
             if (!running) {
@@ -209,6 +230,7 @@ final class OvertimeTab {
             }
             sessions++;
             if (times.length() > 0) times.append(" · ");
+            if (e.isHome() && d.placeType() == Work.PlaceType.GEMISCHT) times.append("🏠 ");
             times.append(Fmt.time(e.start)).append("–").append(Fmt.time(e.end));
             if (Work.day(e.end).isAfter(Work.day(e.start))) times.append("⁺¹");
             pause += Work.pauseMs(e, sur);
@@ -217,15 +239,25 @@ final class OvertimeTab {
         if (times.length() == 0) times.append(free ? "Frei (Überstundenabbau)" : "—");
 
         SpannableStringBuilder meta = new SpannableStringBuilder();
+        Work.PlaceType pt = d.placeType();
+        if (pt == Work.PlaceType.HOMEOFFICE || pt == Work.PlaceType.GEMISCHT) {
+            int st = meta.length();
+            meta.append(pt == Work.PlaceType.HOMEOFFICE ? "🏠 Homeoffice" : "🔀 Büro + Homeoffice");
+            meta.setSpan(new ForegroundColorSpan(a.getColor(R.color.home)), st, meta.length(),
+                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            meta.setSpan(new StyleSpan(Typeface.BOLD), st, meta.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            meta.append(" · ");
+        }
         String tag = null;
         if (type == Work.DayType.FEIERTAG) tag = Holidays.name(d.date, sur.state, sur.extraHolidays);
         else if (type == Work.DayType.SAMSTAG) tag = "Samstag";
         else if (type == Work.DayType.SONNTAG) tag = "Sonntag";
         if (tag != null) {
+            int st = meta.length();
             meta.append(tag);
-            meta.setSpan(new ForegroundColorSpan(a.getColor(R.color.primary)), 0, meta.length(),
+            meta.setSpan(new ForegroundColorSpan(a.getColor(R.color.primary)), st, meta.length(),
                     Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-            meta.setSpan(new StyleSpan(Typeface.BOLD), 0, meta.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            meta.setSpan(new StyleSpan(Typeface.BOLD), st, meta.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
             meta.append(" · kein Soll · ");
         }
         if (sessions > 1) meta.append(sessions + " Einsätze · ");
@@ -248,7 +280,8 @@ final class OvertimeTab {
         String[] items = new String[d.indexes.size()];
         for (int k = 0; k < items.length; k++) {
             Prefs.Entry e = hist.get(d.indexes.get(k));
-            items[k] = e.isFreeDay() ? "Freier Tag (Abbau)" : Fmt.time(e.start) + " – " + Fmt.time(e.end);
+            items[k] = e.isFreeDay() ? "Freier Tag (Abbau)"
+                    : (e.isHome() ? "🏠 " : "🏢 ") + Fmt.time(e.start) + " – " + Fmt.time(e.end);
         }
         new AlertDialog.Builder(a)
                 .setTitle(Fmt.dayOf(d.date) + " – welchen Einsatz?")
@@ -464,6 +497,8 @@ final class OvertimeTab {
         final Button bDate = plainButton();
         final Button bFrom = plainButton();
         final Button bTo = plainButton();
+        final Button bPlace = plainButton();
+        final String[] place = {e != null ? e.place : Prefs.PLACE_OFFICE};
         TextView lbl = new TextView(a);
         lbl.setText("Pause in Minuten (leer lassen = automatisch: ab 6 h, max. 45 Min.)");
         lbl.setTextColor(a.getColor(R.color.text_secondary));
@@ -500,6 +535,14 @@ final class OvertimeTab {
         box.addView(bDate);
         box.addView(bFrom);
         box.addView(bTo);
+        box.addView(bPlace);
+        final Runnable updPlace = () -> bPlace.setText("Ort:  " + (Prefs.PLACE_HOME.equals(place[0])
+                ? "🏠 Homeoffice" : "🏢 Büro") + "   (tippen zum Wechseln)");
+        updPlace.run();
+        bPlace.setOnClickListener(v -> {
+            place[0] = Prefs.PLACE_HOME.equals(place[0]) ? Prefs.PLACE_OFFICE : Prefs.PLACE_HOME;
+            updPlace.run();
+        });
         box.addView(lbl);
         box.addView(etPause);
 
@@ -524,7 +567,7 @@ final class OvertimeTab {
                         }
                     }
                     Prefs.Entry ne = new Prefs.Entry(start, end,
-                            e == null ? "nachgetragen" : "korrigiert", pause);
+                            e == null ? "nachgetragen" : "korrigiert", pause, place[0]);
                     List<Prefs.Entry> list = Prefs.history(a);
                     if (e != null && index < list.size()) list.set(index, ne);
                     else list.add(ne);
@@ -604,7 +647,7 @@ final class OvertimeTab {
         Work.Rules sur = Prefs.rules(a);
         List<Work.Day> days = Work.days(hist, sur);
         StringBuilder csv = new StringBuilder(
-                "Datum;Kommen;Gehen;Pause Min;Netto h;Soll h (Tag);Differenz h (Tag);Art\n");
+                "Datum;Kommen;Gehen;Pause Min;Netto h;Soll h (Tag);Differenz h (Tag);Art;Ort\n");
         for (Work.Day d : days) {
             for (int k = 0; k < d.indexes.size(); k++) {
                 Prefs.Entry e = hist.get(d.indexes.get(k));
@@ -617,7 +660,8 @@ final class OvertimeTab {
                         .append(last ? Fmt.hoursDecimal(d.soll) : "").append(';')
                         .append(last ? String.format(Locale.GERMANY, "%.2f", d.diff / (double) Work.HOUR) : "")
                         .append(';')
-                        .append(e.isFreeDay() ? "Überstundenabbau" : e.source).append('\n');
+                        .append(e.isFreeDay() ? "Überstundenabbau" : e.source).append(';')
+                        .append(e.isFreeDay() ? "" : e.isHome() ? "Homeoffice" : "Büro").append('\n');
             }
         }
         List<Work.Month> months = Work.account(days, Prefs.otStartDate(a),

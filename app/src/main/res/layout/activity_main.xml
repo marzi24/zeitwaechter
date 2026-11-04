@@ -337,6 +337,16 @@
                                     android:textSize="21sp"
                                     android:textStyle="bold"
                                     android:fontFeatureSettings="tnum" />
+                                <TextView
+                                    android:id="@+id/tvPlaceChip"
+                                    style="@style/Chip"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:background="@drawable/bg_chip_primary"
+                                    android:textColor="@color/primary"
+                                    android:layout_marginTop="6dp"
+                                    android:clickable="true"
+                                    android:focusable="true" />
                             </LinearLayout>
 
                             <LinearLayout
@@ -640,6 +650,19 @@
 
                     </LinearLayout>
 
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:background="@color/line"
+                        android:layout_marginTop="14dp" />
+                    <TextView
+                        android:id="@+id/tvPlaces"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:lineSpacingExtra="4dp"
+                        android:textColor="@color/text"
+                        android:textSize="13.5sp" />
                 </LinearLayout>
 
                 <LinearLayout
@@ -886,6 +909,70 @@
                                 android:textStyle="bold" />
                             <TextView
                                 android:id="@+id/tvRowOrt"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:textColor="@color/text_secondary"
+                                android:textSize="13sp"
+                                android:layout_marginTop="1dp" />
+                        </LinearLayout>
+
+                        <ImageView
+                            android:layout_width="20dp"
+                            android:layout_height="20dp"
+                            android:src="@drawable/ic_chevron"
+                            android:tint="@color/text_secondary"
+                            android:importantForAccessibility="no" />
+                    </LinearLayout>
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:layout_marginStart="68dp"
+                        android:background="@color/line" />
+                    <LinearLayout
+                        android:id="@+id/rowHome"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:paddingStart="16dp"
+                        android:paddingEnd="14dp"
+                        android:paddingTop="12dp"
+                        android:paddingBottom="12dp"
+                        android:background="?android:attr/selectableItemBackground"
+                        android:clickable="true"
+                        android:focusable="true">
+
+                        <FrameLayout
+                            android:layout_width="40dp"
+                            android:layout_height="40dp"
+                            android:background="@drawable/bg_icon_soft">
+
+                            <ImageView
+                                android:layout_width="22dp"
+                                android:layout_height="22dp"
+                                android:src="@drawable/ic_house"
+                                android:tint="@color/primary"
+                                android:importantForAccessibility="no"
+                                android:layout_gravity="center" />
+                        </FrameLayout>
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:layout_weight="1"
+                            android:layout_marginStart="14dp">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Zuhause (Homeoffice)"
+                                android:textColor="@color/text"
+                                android:textSize="15.5sp"
+                                android:textStyle="bold" />
+                            <TextView
+                                android:id="@+id/tvRowHome"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:textColor="@color/text_secondary"
@@ -1597,6 +1684,89 @@
                             android:layout_marginStart="8dp" />
                     </LinearLayout>
 
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/secHome"
+                    style="@style/Section"
+                    android:visibility="gone">
+
+                    <TextView
+                        android:id="@+id/tvHomeStatus"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="13.5sp"
+                        android:layout_marginBottom="6dp"
+                        android:lineSpacingExtra="3dp" />
+                    <Button
+                        android:id="@+id/btnHomeUseCurrent"
+                        style="@style/BtnTonal"
+                        android:layout_width="match_parent"
+                        android:text="Aktuellen Standort als Zuhause übernehmen"
+                        android:drawableStart="@drawable/ic_house"
+                        android:layout_marginTop="6dp" />
+                    <Button
+                        android:id="@+id/btnHomePaste"
+                        style="@style/BtnTonal"
+                        android:layout_width="match_parent"
+                        android:text="Aus Zwischenablage einfügen (Google Maps)"
+                        android:layout_marginTop="8dp" />
+                    <TextView
+                        style="@style/Label"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Breitengrad (oder „48.49, 9.21“ einfügen)" />
+                    <EditText
+                        android:id="@+id/etHomeLat"
+                        style="@style/Field"
+                        android:inputType="text"
+                        android:hint="z. B. 48.512345" />
+                    <TextView
+                        style="@style/Label"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Längengrad" />
+                    <EditText
+                        android:id="@+id/etHomeLon"
+                        style="@style/Field"
+                        android:inputType="numberDecimal|numberSigned"
+                        android:hint="z. B. 9.198765" />
+                    <TextView
+                        style="@style/Label"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Radius um Zuhause (Meter)" />
+                    <EditText
+                        android:id="@+id/etHomeRadius"
+                        style="@style/Field"
+                        android:inputType="number" />
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginTop="14dp">
+
+                        <Button
+                            android:id="@+id/btnHomeClear"
+                            style="@style/BtnTonal"
+                            android:layout_width="0dp"
+                            android:text="Entfernen"
+                            android:layout_weight="1" />
+                        <Button
+                            android:id="@+id/btnHomeSave"
+                            style="@style/BtnFilled"
+                            android:layout_width="0dp"
+                            android:text="Übernehmen"
+                            android:layout_weight="1"
+                            android:layout_marginStart="8dp" />
+                    </LinearLayout>
+
+                    <TextView
+                        style="@style/Hint"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Stempelst du von Hand ein, prüft die App kurz den Standort: im Bereich Zuhause wird der Einsatz als Homeoffice markiert, im Bereich Arbeit als Büro. Homeoffice wird nie automatisch ausgestempelt. Automatisch eingestempelt wird zu Hause nicht." />
                 </LinearLayout>
 
                 <LinearLayout

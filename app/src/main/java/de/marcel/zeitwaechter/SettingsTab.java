@@ -57,6 +57,8 @@ final class SettingsTab {
     private final Button btnStartDate, btnSaveAll;
     private final Switch swAutoList;
     private final TextView tvDetailTitle, tvSetupTitle, tvSetupSub;
+    private final TextView tvRowHome, tvHomeStatus;
+    private final EditText etHomeLat, etHomeLon, etHomeRadius;
     private final TextView tvRowOrt, tvRowAuto, tvRowWege, tvRowGrenzen, tvRowWarn, tvRowSoll, tvRowOt,
             tvRowZuschlag, tvRowFeiertage;
     private final android.widget.ImageView setupIcon;
@@ -108,6 +110,11 @@ final class SettingsTab {
         setupIcon = a.findViewById(R.id.setupIcon);
         setupIconBg = a.findViewById(R.id.setupIconBg);
         tvRowOrt = a.findViewById(R.id.tvRowOrt);
+        tvRowHome = a.findViewById(R.id.tvRowHome);
+        tvHomeStatus = a.findViewById(R.id.tvHomeStatus);
+        etHomeLat = a.findViewById(R.id.etHomeLat);
+        etHomeLon = a.findViewById(R.id.etHomeLon);
+        etHomeRadius = a.findViewById(R.id.etHomeRadius);
         tvRowAuto = a.findViewById(R.id.tvRowAuto);
         tvRowWege = a.findViewById(R.id.tvRowWege);
         tvRowGrenzen = a.findViewById(R.id.tvRowGrenzen);
@@ -117,13 +124,28 @@ final class SettingsTab {
         tvRowZuschlag = a.findViewById(R.id.tvRowZuschlag);
         tvRowFeiertage = a.findViewById(R.id.tvRowFeiertage);
         sections = new View[]{
-                a.findViewById(R.id.secSetup), a.findViewById(R.id.secOrt), a.findViewById(R.id.secErkennung),
+                a.findViewById(R.id.secSetup), a.findViewById(R.id.secOrt), a.findViewById(R.id.secHome),
+                a.findViewById(R.id.secErkennung),
                 a.findViewById(R.id.secGrenzen), a.findViewById(R.id.secSoll), a.findViewById(R.id.secOt),
                 a.findViewById(R.id.secZuschlag), a.findViewById(R.id.secFeiertage)};
 
         // ---- Liste: Zeilen öffnen Detailseiten ----
         a.findViewById(R.id.rowSetup).setOnClickListener(v -> openSetup());
         a.findViewById(R.id.rowOrt).setOnClickListener(v -> openDetail(R.id.secOrt, "Arbeitsort"));
+        a.findViewById(R.id.rowHome).setOnClickListener(v -> openDetail(R.id.secHome, "Zuhause (Homeoffice)"));
+        a.findViewById(R.id.btnHomeUseCurrent).setOnClickListener(v -> homeFromCurrentLocation());
+        a.findViewById(R.id.btnHomePaste).setOnClickListener(v -> homeFromClipboard());
+        a.findViewById(R.id.btnHomeSave).setOnClickListener(v -> homeSaveFields());
+        a.findViewById(R.id.btnHomeClear).setOnClickListener(v -> new AlertDialog.Builder(a)
+                .setTitle("Zuhause entfernen?")
+                .setMessage("Einsätze werden dann nicht mehr automatisch als Homeoffice erkannt.")
+                .setPositiveButton("Entfernen", (d, w) -> {
+                    Prefs.clearHomeLocation(a);
+                    fillHomeFields();
+                    refresh();
+                })
+                .setNegativeButton("Abbrechen", null)
+                .show());
         a.findViewById(R.id.rowWege).setOnClickListener(v -> openDetail(R.id.secErkennung, "Erkennung & Wege"));
         a.findViewById(R.id.rowGrenzen).setOnClickListener(v -> openDetail(R.id.secGrenzen, "Grenzen & Warnungen"));
         a.findViewById(R.id.rowWarn).setOnClickListener(v -> openDetail(R.id.secGrenzen, "Grenzen & Warnungen"));
@@ -229,7 +251,8 @@ final class SettingsTab {
         openSection = a.findViewById(sectionId);
         tvDetailTitle.setText(title);
         // Einrichtung und Arbeitsort haben eigene Knöpfe
-        OvertimeTab.show(btnSaveAll, sectionId != R.id.secSetup && sectionId != R.id.secOrt);
+        OvertimeTab.show(btnSaveAll, sectionId != R.id.secSetup && sectionId != R.id.secOrt
+                && sectionId != R.id.secHome);
         refresh();
         a.showSettingsPage(true);
     }
@@ -251,6 +274,12 @@ final class SettingsTab {
         setupIconBg.setBackgroundResource(ok ? R.drawable.bg_icon_ok : R.drawable.bg_icon_warn);
 
         tvRowOrt.setText(Prefs.hasWorkLocation(a) ? "Gespeichert · Radius " + Prefs.radius(a) + " m" : "Noch nicht festgelegt");
+        tvRowHome.setText(Prefs.hasHomeLocation(a) ? "Gespeichert · Radius " + Prefs.homeRadius(a) + " m"
+                : "Noch nicht festgelegt – für die Homeoffice-Erkennung");
+        tvHomeStatus.setText(Prefs.hasHomeLocation(a)
+                ? String.format(Locale.US, "Gespeichert: %.5f, %.5f · Radius %d m", Prefs.homeLat(a), Prefs.homeLon(a),
+                Prefs.homeRadius(a))
+                : "Noch kein Zuhause gespeichert. Am einfachsten zu Hause auf „Aktuellen Standort übernehmen“ tippen.");
         boolean auto = Prefs.trackingEnabled(a);
         if (swAutoList.isChecked() != auto) swAutoList.setChecked(auto);
         tvRowAuto.setText(auto ? "Kommen & Gehen per Standort" : "Aus – nur von Hand einstempeln");
@@ -270,6 +299,88 @@ final class SettingsTab {
         tvRowZuschlag.setText(r.week + " · " + r.satLow + "/" + r.satHigh + " · " + r.sun + " · " + r.hol + " %");
         tvRowFeiertage.setText(Holidays.STATE_NAMES[Holidays.stateIndex(r.state)]
                 + (r.extraHolidays.isEmpty() ? "" : " + " + r.extraHolidays));
+    }
+
+    // =====================================================================
+    // Zuhause (Homeoffice)
+    // =====================================================================
+
+    private void fillHomeFields() {
+        if (Prefs.hasHomeLocation(a)) {
+            etHomeLat.setText(String.format(Locale.US, "%.6f", Prefs.homeLat(a)));
+            etHomeLon.setText(String.format(Locale.US, "%.6f", Prefs.homeLon(a)));
+        } else {
+            etHomeLat.setText("");
+            etHomeLon.setText("");
+        }
+        etHomeRadius.setText(String.valueOf(Prefs.homeRadius(a)));
+    }
+
+    private void applyHome(double lat, double lon) {
+        Prefs.setHomeLocation(a, lat, lon);
+        fillHomeFields();
+        hideKeyboard();
+        refresh();
+        toast(String.format(Locale.US, "Zuhause gespeichert ✔  (%.5f, %.5f)", lat, lon));
+    }
+
+    @SuppressLint("MissingPermission")
+    private void homeFromCurrentLocation() {
+        if (!GeofenceHelper.hasFine(a)) {
+            toast("Bitte zuerst unter „Einrichtung“ den Standort erlauben.");
+            return;
+        }
+        toast("Standort wird ermittelt …");
+        LocationServices.getFusedLocationProviderClient(a)
+                .getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null)
+                .addOnSuccessListener(a, loc -> {
+                    if (loc == null) {
+                        toast("Kein Standort gefunden. Ist GPS an?");
+                        return;
+                    }
+                    applyHome(loc.getLatitude(), loc.getLongitude());
+                })
+                .addOnFailureListener(a, e -> toast("Fehler: " + e.getMessage()));
+    }
+
+    private void homeFromClipboard() {
+        ClipboardManager cm = a.getSystemService(ClipboardManager.class);
+        String text = null;
+        if (cm != null && cm.hasPrimaryClip()) {
+            ClipData clip = cm.getPrimaryClip();
+            if (clip != null && clip.getItemCount() > 0) {
+                CharSequence cs = clip.getItemAt(0).coerceToText(a);
+                if (cs != null) text = cs.toString();
+            }
+        }
+        double[] c = findCoordinates(text);
+        if (c == null) {
+            toast("Keine Koordinaten in der Zwischenablage. In Google Maps lange auf dein Zuhause drücken und die Zahlen antippen.");
+            return;
+        }
+        applyHome(c[0], c[1]);
+    }
+
+    private void homeSaveFields() {
+        try {
+            String latS = etHomeLat.getText().toString().trim();
+            String lonS = etHomeLon.getText().toString().trim();
+            double[] pair = findCoordinates(latS);
+            if (pair == null) {
+                if (latS.isEmpty() && lonS.isEmpty()) {
+                    toast("Bitte Koordinaten eingeben oder einfügen.");
+                    return;
+                }
+                pair = new double[]{parseDouble(latS, "Breitengrad"), parseDouble(lonS, "Längengrad")};
+                if (Math.abs(pair[0]) > 90 || Math.abs(pair[1]) > 180) {
+                    throw new IllegalArgumentException("Koordinaten ungültig.");
+                }
+            }
+            Prefs.setHomeRadius(a, parseInt(etHomeRadius, "Radius", 50, 2000));
+            applyHome(pair[0], pair[1]);
+        } catch (IllegalArgumentException e) {
+            toast(e.getMessage());
+        }
     }
 
     /** Ist alles Nötige erlaubt und ein Arbeitsort gespeichert? */
@@ -346,6 +457,7 @@ final class SettingsTab {
         etWarn.setText(Prefs.warnList(a));
         etResume.setText(String.valueOf(Prefs.resumeMin(a)));
         fillLocationFields();
+        fillHomeFields();
 
         etSoll.setText(Fmt.hoursInput(Prefs.sollMin(a)));
         etPauseAfter.setText(Fmt.hoursInput(Prefs.pauseAfterMin(a)));

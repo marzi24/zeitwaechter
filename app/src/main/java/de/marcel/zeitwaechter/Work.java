@@ -188,10 +188,51 @@ final class Work {
         long pause;
         long soll;
         long diff;
+        /** Netto im Homeoffice. */
+        long homeNet;
+        boolean hasHome;
+        boolean hasOffice;
 
         Day(LocalDate date) {
             this.date = date;
         }
+
+        PlaceType placeType() {
+            if (hasHome && hasOffice) return PlaceType.GEMISCHT;
+            if (hasHome) return PlaceType.HOMEOFFICE;
+            if (hasOffice) return PlaceType.BUERO;
+            return PlaceType.KEINER;
+        }
+    }
+
+    /** Wo an einem Tag gearbeitet wurde. Unbekannter Ort zählt als Büro. */
+    enum PlaceType { BUERO, HOMEOFFICE, GEMISCHT, KEINER }
+
+    /** Zusammenfassung der Arbeitsorte eines Zeitraums. */
+    static final class PlaceStats {
+        int office, home, mixed;
+        long homeNet;
+    }
+
+    static PlaceStats placeStats(List<Day> days) {
+        PlaceStats p = new PlaceStats();
+        for (Day d : days) {
+            switch (d.placeType()) {
+                case BUERO:
+                    p.office++;
+                    break;
+                case HOMEOFFICE:
+                    p.home++;
+                    break;
+                case GEMISCHT:
+                    p.mixed++;
+                    break;
+                default:
+                    break;
+            }
+            p.homeNet += d.homeNet;
+        }
+        return p;
     }
 
     /**
@@ -220,8 +261,17 @@ final class Work {
                 out.add(cur);
             }
             cur.indexes.add(i);
-            cur.net += netMs(e, r);
+            long n = netMs(e, r);
+            cur.net += n;
             cur.pause += pauseMs(e, r);
+            if (!e.isFreeDay()) {
+                if (e.isHome()) {
+                    cur.hasHome = true;
+                    cur.homeNet += n;
+                } else {
+                    cur.hasOffice = true;
+                }
+            }
         }
         for (Day d : out) d.diff = d.net - d.soll;
         return out;

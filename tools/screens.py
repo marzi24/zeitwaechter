@@ -48,16 +48,22 @@ def sample_history(today):
             i += 1
             begin = datetime(d.year, d.month, d.day, 7, 0, tzinfo=TZ) + timedelta(minutes=30 + k)
             length = timedelta(hours=8, minutes=45 + (k * 2) % 70) if wd < 5 else timedelta(hours=7, minutes=10)
-            out.append({"s": ms(begin), "e": ms(begin + length), "q": "automatisch", "p": -1})
+            place = "h" if (wd in (1, 3) and d.day % 3 == 0) else "b"
+            out.append({"s": ms(begin), "e": ms(begin + length), "q": "automatisch" if place == "b" else "manuell",
+                        "p": -1, "o": place})
+            if wd == 0 and d.day % 2 == 0:  # gemischter Tag: abends noch Homeoffice
+                eve = datetime(d.year, d.month, d.day, 19, 30, tzinfo=TZ)
+                out.append({"s": ms(eve), "e": ms(eve + timedelta(hours=1, minutes=15)), "q": "manuell", "p": -1, "o": "h"})
         d += timedelta(days=1)
     return out
 
 
-def prefs(history, active=False, start=None, source="automatisch", latest_out=20 * 60 + 45, ot_start=None):
+def prefs(history, active=False, start=None, source="automatisch", latest_out=20 * 60 + 45, ot_start=None, place="b"):
     vals = {
         "string": {"history": json.dumps(history), "session_source": source, "work_lat": "48.491234",
                    "work_lon": "9.204321", "hourly_rate": "25.5", "warn_list": "30, 15, 5",
-                   "geofence_status": "Aktiv (Radius 150 m)", "holiday_state": "BW", "extra_holidays": ""},
+                   "geofence_status": "Aktiv (Radius 150 m)", "holiday_state": "BW", "extra_holidays": "",
+                   "home_lat": "48.512345", "home_lon": "9.198765", "session_place": place},
         "boolean": {"session_active": active, "tracking_enabled": True},
         "long": {"ot_start_epochday": ot_start, "session_start": start or 0},
         "int": {"soll_min_day": 480, "start_balance_min": 35 * 60, "latest_out_min": latest_out, "radius_m": 150},
@@ -138,6 +144,12 @@ write_prefs(prefs(hist, True, ms(n - timedelta(hours=3, minutes=11)), latest_out
 launch(0)
 shot("1_heute_minus")
 
+# 1b) Heute – Homeoffice
+write_prefs(prefs(hist, True, ms(n - timedelta(hours=2, minutes=5)), source="manuell", latest_out=-1,
+                  ot_start=ot_start, place="h"))
+launch(0)
+shot("1b_heute_homeoffice")
+
 # 2) Heute – im Plus
 write_prefs(prefs(hist, True, ms(n - timedelta(hours=9, minutes=34)), latest_out=-1, ot_start=ot_start))
 launch(0)
@@ -154,6 +166,12 @@ launch(2)
 shot("5_einstellungen")
 if tap_text("Zuschläge"):
     shot("6_einstellungen_zuschlaege")
+launch(2)
+adb("shell", "input", "keyevent", "4")  # zurück zur Liste, falls noch Detailseite offen
+time.sleep(1)
+launch(2)
+if tap_text("Zuhause (Homeoffice)"):
+    shot("6b_einstellungen_zuhause")
 
 # 5) Dunkel: 2. Einsatz, Grenze in 14 Minuten
 adb("shell", "cmd", "uimode", "night", "yes")

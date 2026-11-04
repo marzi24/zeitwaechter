@@ -183,6 +183,9 @@ active_box = ll([
             tv(id='tvStartLabel', text='Eingestempelt', extra=['android:textColor="@color/text_secondary"', 'android:textSize="13sp"']),
             tv(id='tvStartTime', extra=['android:textColor="@color/text"', 'android:textSize="21sp"',
                                         'android:textStyle="bold"', 'android:fontFeatureSettings="tnum"']),
+            tv(id='tvPlaceChip', style='Chip', extra=['android:background="@drawable/bg_chip_primary"',
+                                                      'android:textColor="@color/primary"', 'android:layout_marginTop="6dp"',
+                                                      'android:clickable="true"', 'android:focusable="true"']),
         ], w='0dp', extra=['android:layout_weight="1"']),
         ll([
             stepper_btn('btnMinus', '−'),
@@ -274,6 +277,10 @@ summary = section([
                                                'android:textColor="@color/text_secondary"', 'android:textSize="12.5sp"']),
     ll([sum_col('Ist', 'tvIst'), sum_col('Soll', 'tvSoll'), sum_col('Konto Ende', 'tvKontoEnde')], vertical=False,
        extra=['android:layout_marginTop="14dp"']),
+    el('View', ['android:layout_width="match_parent"', 'android:layout_height="1dp"', 'android:background="@color/line"',
+                'android:layout_marginTop="14dp"']),
+    tv(id='tvPlaces', w='match_parent', extra=['android:layout_marginTop="12dp"', 'android:lineSpacingExtra="4dp"',
+                                               'android:textColor="@color/text"', 'android:textSize="13.5sp"']),
 ])
 
 day_list = ll([], id='dayList', extra=['android:background="@drawable/section_bg"', 'android:paddingTop="6dp"',
@@ -374,6 +381,7 @@ settings_list = [
     setup_card,
     tv(text='Erfassung', style='GroupLabel'),
     group([srow('rowOrt', 'pin', 'Arbeitsort', 'tvRowOrt'),
+           srow('rowHome', 'house', 'Zuhause (Homeoffice)', 'tvRowHome'),
            srow('rowAuto', 'clock', 'Automatisch erkennen', 'tvRowAuto', right=sw_auto),
            srow('rowWege', 'car', 'Wege zur Stempeluhr', 'tvRowWege')]),
     tv(text='Grenzen &amp; Erinnerungen', style='GroupLabel'),
@@ -432,6 +440,25 @@ sec_ort = section([
                                                                          'android:layout_marginStart="8dp"']),
     ], vertical=False, extra=['android:layout_marginTop="14dp"']),
 ], id='secOrt', extra=['android:visibility="gone"'])
+
+sec_home = section([
+    tv(id='tvHomeStatus', w='match_parent', extra=['android:textColor="@color/text_secondary"', 'android:textSize="13.5sp"',
+                                                   'android:layout_marginBottom="6dp"', 'android:lineSpacingExtra="3dp"']),
+    btn('btnHomeUseCurrent', 'Aktuellen Standort als Zuhause übernehmen', extra=['android:drawableStart="@drawable/ic_house"',
+                                                                                 'android:layout_marginTop="6dp"']),
+    btn('btnHomePaste', 'Aus Zwischenablage einfügen (Google Maps)', extra=['android:layout_marginTop="8dp"']),
+    lfield('Breitengrad (oder „48.49, 9.21“ einfügen)', 'etHomeLat', 'text', 'z. B. 48.512345'),
+    lfield('Längengrad', 'etHomeLon', 'numberDecimal|numberSigned', 'z. B. 9.198765'),
+    lfield('Radius um Zuhause (Meter)', 'etHomeRadius', 'number'),
+    ll([
+        btn('btnHomeClear', 'Entfernen', w='0dp', extra=['android:layout_weight="1"']),
+        btn('btnHomeSave', 'Übernehmen', 'BtnFilled', w='0dp', extra=['android:layout_weight="1"',
+                                                                     'android:layout_marginStart="8dp"']),
+    ], vertical=False, extra=['android:layout_marginTop="14dp"']),
+    hint('Stempelst du von Hand ein, prüft die App kurz den Standort: im Bereich Zuhause wird der Einsatz als '
+         'Homeoffice markiert, im Bereich Arbeit als Büro. Homeoffice wird nie automatisch ausgestempelt. '
+         'Automatisch eingestempelt wird zu Hause nicht.'),
+], id='secHome', extra=['android:visibility="gone"'])
 
 sec_erkennung = section([
     el('Switch', ['android:id="@+id/swEnabled"', 'android:layout_width="match_parent"', 'android:layout_height="wrap_content"',
@@ -492,7 +519,7 @@ detail_header = ll([
                                   'android:layout_marginStart="12dp"']),
 ], vertical=False, extra=['android:gravity="center_vertical"', 'android:paddingTop="10dp"', 'android:paddingBottom="14dp"'])
 
-scroll_detail = scroll('scrollDetail', [detail_header, sec_setup, sec_ort, sec_erkennung, sec_grenzen, sec_soll, sec_ot,
+scroll_detail = scroll('scrollDetail', [detail_header, sec_setup, sec_ort, sec_home, sec_erkennung, sec_grenzen, sec_soll, sec_ot,
                                         sec_zuschlag, sec_feiertage,
                                         btn('btnSaveAll', 'Speichern', 'BtnFilled', extra=['android:layout_marginTop="4dp"',
                                                                                            'android:layout_marginBottom="28dp"'])],

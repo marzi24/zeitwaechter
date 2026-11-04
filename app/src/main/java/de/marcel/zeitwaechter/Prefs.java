@@ -68,6 +68,18 @@ public final class Prefs {
     /** Quelle für einen freien Tag, an dem Überstunden abgebaut werden. */
     public static final String SOURCE_FREE = "frei";
 
+    /** Arbeitsort eines Einsatzes. */
+    public static final String PLACE_OFFICE = "b";
+    public static final String PLACE_HOME = "h";
+    /** Unbekannt (z. B. von Hand eingestempelt, Standort nicht ermittelbar) – zählt als Büro. */
+    public static final String PLACE_UNKNOWN = "";
+
+    private static final String K_SESSION_PLACE = "session_place";
+    private static final String K_LAST_END_PLACE = "last_end_place";
+    private static final String K_HOME_LAT = "home_lat";
+    private static final String K_HOME_LON = "home_lon";
+    private static final String K_HOME_RADIUS = "home_radius_m";
+
     /** Ein Eintrag im Verlauf (Zeiten in Millisekunden seit 1970). */
     public static final class Entry {
         public final long start;
@@ -75,20 +87,31 @@ public final class Prefs {
         public final String source;
         /** Pause in Minuten, -1 = automatisch nach Arbeitszeitgesetz. */
         public final int pause;
+        /** Arbeitsort: PLACE_OFFICE, PLACE_HOME oder PLACE_UNKNOWN. */
+        public final String place;
 
         public Entry(long start, long end, String source) {
             this(start, end, source, -1);
         }
 
         public Entry(long start, long end, String source, int pause) {
+            this(start, end, source, pause, PLACE_UNKNOWN);
+        }
+
+        public Entry(long start, long end, String source, int pause, String place) {
             this.start = start;
             this.end = end;
             this.source = source;
             this.pause = pause;
+            this.place = place == null ? PLACE_UNKNOWN : place;
         }
 
         public boolean isFreeDay() {
             return SOURCE_FREE.equals(source);
+        }
+
+        public boolean isHome() {
+            return PLACE_HOME.equals(place);
         }
     }
 
@@ -248,11 +271,21 @@ public final class Prefs {
                 .commit();
     }
 
+    /** Ort der laufenden Sitzung (PLACE_…). */
+    public static String sessionPlace(Context c) {
+        return sp(c).getString(K_SESSION_PLACE, PLACE_UNKNOWN);
+    }
+
+    public static void setSessionPlace(Context c, String place) {
+        sp(c).edit().putString(K_SESSION_PLACE, place == null ? PLACE_UNKNOWN : place).commit();
+    }
+
     public static void clearSession(Context c) {
         sp(c).edit()
                 .putBoolean(K_ACTIVE, false)
                 .remove(K_START)
                 .remove(K_SOURCE)
+                .remove(K_SESSION_PLACE)
                 .commit();
     }
 
@@ -265,10 +298,54 @@ public final class Prefs {
     }
 
     public static void setLastEnd(Context c, long time, boolean manual) {
+        setLastEnd(c, time, manual, PLACE_UNKNOWN);
+    }
+
+    public static void setLastEnd(Context c, long time, boolean manual, String place) {
         sp(c).edit()
                 .putLong(K_LAST_END, time)
                 .putBoolean(K_LAST_END_MANUAL, manual)
+                .putString(K_LAST_END_PLACE, place)
                 .commit();
+    }
+
+    /** Ort der zuletzt beendeten Sitzung. */
+    public static String lastEndPlace(Context c) {
+        return sp(c).getString(K_LAST_END_PLACE, PLACE_UNKNOWN);
+    }
+
+    // ---------------- Zuhause (Homeoffice) ----------------
+
+    public static boolean hasHomeLocation(Context c) {
+        return sp(c).contains(K_HOME_LAT) && sp(c).contains(K_HOME_LON);
+    }
+
+    public static double homeLat(Context c) {
+        return Double.parseDouble(sp(c).getString(K_HOME_LAT, "0"));
+    }
+
+    public static double homeLon(Context c) {
+        return Double.parseDouble(sp(c).getString(K_HOME_LON, "0"));
+    }
+
+    public static void setHomeLocation(Context c, double lat, double lon) {
+        sp(c).edit()
+                .putString(K_HOME_LAT, Double.toString(lat))
+                .putString(K_HOME_LON, Double.toString(lon))
+                .commit();
+    }
+
+    public static void clearHomeLocation(Context c) {
+        sp(c).edit().remove(K_HOME_LAT).remove(K_HOME_LON).commit();
+    }
+
+    /** Radius um Zuhause in Metern (Standard 200). */
+    public static int homeRadius(Context c) {
+        return sp(c).getInt(K_HOME_RADIUS, 200);
+    }
+
+    public static void setHomeRadius(Context c, int m) {
+        sp(c).edit().putInt(K_HOME_RADIUS, m).commit();
     }
 
     // ---------------- Verlauf ----------------
@@ -280,7 +357,8 @@ public final class Prefs {
             JSONArray arr = new JSONArray(sp(c).getString(K_HISTORY, "[]"));
             for (int i = 0; i < arr.length(); i++) {
                 JSONObject o = arr.getJSONObject(i);
-                list.add(new Entry(o.getLong("s"), o.getLong("e"), o.optString("q", ""), o.optInt("p", -1)));
+                list.add(new Entry(o.getLong("s"), o.getLong("e"), o.optString("q", ""), o.optInt("p", -1),
+                        o.optString("o", PLACE_UNKNOWN)));
             }
         } catch (JSONException ignored) {
             // beschädigter Verlauf -> leer anzeigen
@@ -302,6 +380,7 @@ public final class Prefs {
                 o.put("e", Work.toMinute(e.end));
                 o.put("q", e.source);
                 o.put("p", e.pause);
+                if (!e.place.isEmpty()) o.put("o", e.place);
                 arr.put(o);
             }
         } catch (JSONException ignored) {

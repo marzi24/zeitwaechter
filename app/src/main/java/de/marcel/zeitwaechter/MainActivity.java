@@ -52,7 +52,7 @@ public class MainActivity extends Activity {
     // Heute
     private TextView tvDate, tvStatusChip, tvRingSmall, tvRingBig, tvRingUnit, tvPlusChip;
     private TextView tvDeadlineLabel, tvDeadline, tvDeadlineNote, tvStatGross, tvStatNet, tvStatDiff;
-    private TextView tvStartTime, tvStartLabel, tvAlertTitle, tvAlertText, tvWeekChip;
+    private TextView tvStartTime, tvStartLabel, tvPlaceChip, tvAlertTitle, tvAlertText, tvWeekChip;
     private TextView btnEditStart, btnMinus, btnPlus;
     private View setupHint, alertCard, activeBox;
     private Button btnStart, btnEnd, btnDiscard;
@@ -85,6 +85,8 @@ public class MainActivity extends Activity {
         tvStatDiff = findViewById(R.id.tvStatDiff);
         tvStartTime = findViewById(R.id.tvStartTime);
         tvStartLabel = findViewById(R.id.tvStartLabel);
+        tvPlaceChip = findViewById(R.id.tvPlaceChip);
+        tvPlaceChip.setOnClickListener(v -> choosePlace());
         tvAlertTitle = findViewById(R.id.tvAlertTitle);
         tvAlertText = findViewById(R.id.tvAlertText);
         tvWeekChip = findViewById(R.id.tvWeekChip);
@@ -128,6 +130,7 @@ public class MainActivity extends Activity {
         btnStart.setOnClickListener(v -> {
             long now = System.currentTimeMillis();
             SessionManager.start(this, now, "manuell");
+            Places.detectForSession(this, this::refreshAll); // Homeoffice oder Büro?
             Work.DayInfo di = SessionManager.dayInfo(this, now);
             if (di.earlierSessions > 0 && di.remainingNet <= 0) {
                 toast("Achtung: Die " + Fmt.hoursFromMinutes(Prefs.maxWorkMin(this))
@@ -263,7 +266,9 @@ public class MainActivity extends Activity {
     private void editStart() {
         long initial = Prefs.active(this) ? Prefs.start(this) : System.currentTimeMillis();
         pickTime(initial, "Laut Stempeluhr eingestempelt um …", ms -> {
+            boolean wasActive = Prefs.active(this);
             SessionManager.setStart(this, ms);
+            if (!wasActive) Places.detectForSession(this, this::refreshAll);
             toast("Startzeit: " + Fmt.timeSmart(ms) + " · spätestens raus: "
                     + Fmt.timeSmart(SessionManager.deadline(this, ms)));
             refreshAll();
@@ -341,6 +346,14 @@ public class MainActivity extends Activity {
                 chip(tvStatusChip, (di.earlierSessions + 1) + ". Einsatz heute", R.drawable.bg_chip_warn, R.color.warn);
             } else {
                 chip(tvStatusChip, "Eingestempelt · " + Prefs.source(this), R.drawable.bg_chip_ok, R.color.ok);
+            }
+            String place = Prefs.sessionPlace(this);
+            if (Prefs.PLACE_HOME.equals(place)) {
+                chip(tvPlaceChip, "🏠  Homeoffice  ▾", R.drawable.bg_chip_home, R.color.home);
+            } else if (Prefs.PLACE_OFFICE.equals(place)) {
+                chip(tvPlaceChip, "🏢  Büro  ▾", R.drawable.bg_chip_primary, R.color.primary);
+            } else {
+                chip(tvPlaceChip, "Ort wählen  ▾", R.drawable.bg_chip_primary, R.color.primary);
             }
 
             // ---- Ring ----
@@ -463,6 +476,23 @@ public class MainActivity extends Activity {
         }
 
         refreshWeek(hist, active, start, now, rules);
+    }
+
+    /** Ort der laufenden Sitzung von Hand festlegen. */
+    private void choosePlace() {
+        if (!Prefs.active(this)) return;
+        new AlertDialog.Builder(this)
+                .setTitle("Wo arbeitest du gerade?")
+                .setItems(new String[]{"🏢  Büro", "🏠  Homeoffice"}, (d, which) -> {
+                    Prefs.setSessionPlace(this, which == 0 ? Prefs.PLACE_OFFICE : Prefs.PLACE_HOME);
+                    Notifier.showStatus(this);
+                    refreshAll();
+                    if (which == 1) {
+                        toast("Homeoffice – du wirst nicht automatisch ausgestempelt.");
+                    }
+                })
+                .setNegativeButton("Abbrechen", null)
+                .show();
     }
 
     /** Große Zahl im Ring: ab 1 h als „7:34 Stunden“, darunter als „14 Minuten“. */

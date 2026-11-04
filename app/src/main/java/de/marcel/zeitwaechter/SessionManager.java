@@ -53,11 +53,24 @@ public final class SessionManager {
     /** Arbeitsort erreicht. whenMs = Zeitpunkt, an dem das Handy den Bereich betreten hat. */
     public static void onArrive(Context c, long whenMs) {
         if (!Prefs.trackingEnabled(c)) return;
-        if (Prefs.active(c)) return; // läuft schon -> nichts ändern (Startzeit NIE nach hinten schieben)
+        if (Prefs.active(c)) {
+            // läuft schon -> nichts ändern (Startzeit NIE nach hinten schieben)
+            if (Prefs.PLACE_HOME.equals(Prefs.sessionPlace(c))) {
+                Notifier.showInfo(c, "Im Büro angekommen",
+                        "Du bist noch im Homeoffice eingestempelt (seit " + Fmt.time(Prefs.start(c))
+                                + "). Wenn du dort ausgestempelt hast: In der App auf „Ausgestempelt“ tippen "
+                                + "und danach neu einstempeln.");
+            }
+            return;
+        }
 
         long lastEnd = Prefs.lastEnd(c);
         long window = Prefs.resumeMin(c) * 60_000L;
-        boolean recentlyEnded = lastEnd > 0 && whenMs >= lastEnd - 10 * 60_000L && whenMs - lastEnd < window;
+        // War der letzte Einsatz Homeoffice, ist das Ankommen im Büro ein neuer Einsatz –
+        // nicht „kurz weg gewesen“.
+        boolean lastWasHome = Prefs.PLACE_HOME.equals(Prefs.lastEndPlace(c));
+        boolean recentlyEnded = !lastWasHome && lastEnd > 0 && whenMs >= lastEnd - 10 * 60_000L
+                && whenMs - lastEnd < window;
 
         if (recentlyEnded && Prefs.lastEndManual(c)) {
             // Du hast kurz vorher selbst "Ausgestempelt"/"Verwerfen" gedrückt.
@@ -70,6 +83,7 @@ public final class SessionManager {
             Prefs.Entry last = Prefs.popLastHistory(c);
             if (last != null) {
                 Prefs.setSession(c, last.start, last.source);
+                Prefs.setSessionPlace(c, Prefs.PLACE_OFFICE);
                 Prefs.setLastEnd(c, 0, false);
                 scheduleAlarms(c);
                 Notifier.showStatus(c);
@@ -81,13 +95,16 @@ public final class SessionManager {
         }
 
         long stampIn = whenMs + Prefs.offsetMin(c) * 60_000L;
-        start(c, stampIn, "automatisch");
+        start(c, stampIn, "automatisch", Prefs.PLACE_OFFICE);
         Notifier.showArrived(c, stampIn, deadline(c, stampIn));
     }
 
     /** Arbeitsort verlassen. */
     public static void onLeave(Context c, long whenMs) {
         if (!Prefs.active(c)) return;
+        // Nur Einsätze, die sicher im Büro sind, enden automatisch beim Verlassen.
+        // Homeoffice oder unbekannter Ort (z. B. von Hand eingestempelt) bleiben eingestempelt.
+        if (!Prefs.PLACE_OFFICE.equals(Prefs.sessionPlace(c))) return;
         long stampOut = whenMs - Prefs.offsetOutMin(c) * 60_000L;
         long start = Prefs.start(c);
         if (stampOut < start) stampOut = start;
@@ -99,9 +116,15 @@ public final class SessionManager {
 
     // ---------------- Aktionen ----------------
 
-    /** Neue Sitzung mit gegebener Einstempelzeit starten. */
+    /** Neue Sitzung mit gegebener Einstempelzeit starten (Ort wird danach per Standort ermittelt). */
     public static void start(Context c, long stampIn, String source) {
+        start(c, stampIn, source, Prefs.PLACE_UNKNOWN);
+    }
+
+    /** Neue Sitzung mit gegebener Einstempelzeit und bekanntem Ort starten. */
+    public static void start(Context c, long stampIn, String source, String place) {
         Prefs.setSession(c, stampIn, source);
+        Prefs.setSessionPlace(c, place);
         Prefs.setLastEnd(c, 0, false);
         scheduleAlarms(c);
         Notifier.showStatus(c);
@@ -123,9 +146,10 @@ public final class SessionManager {
         if (!Prefs.active(c)) return;
         long start = Prefs.start(c);
         if (stampOut < start) stampOut = start;
-        Prefs.addHistory(c, new Prefs.Entry(start, stampOut, Prefs.source(c)));
+        String place = Prefs.sessionPlace(c);
+        Prefs.addHistory(c, new Prefs.Entry(start, stampOut, Prefs.source(c), -1, place));
         Prefs.clearSession(c);
-        Prefs.setLastEnd(c, manual ? System.currentTimeMillis() : stampOut, manual);
+        Prefs.setLastEnd(c, manual ? System.currentTimeMillis() : stampOut, manual, place);
         cancelAlarms(c);
         Notifier.cancelStatus(c);
         Notifier.cancelWarning(c);
