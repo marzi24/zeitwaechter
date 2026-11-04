@@ -187,6 +187,21 @@ Genaue Anleitungen pro Modell findest du auf <https://dontkillmyapp.com>.
 - **Früher ausgestempelt:** In der Benachrichtigung **„Ausgestempelt“** tippen, dann kommen keine Warnungen mehr.
 - **Dark-Modus:** Die App folgt automatisch der Handy-Einstellung (Einstellungen → Display → Dunkles Design).
 
+### Homeoffice
+
+- **Einmalig:** Zu Hause ⚙ → **„Zuhause (Homeoffice)“** → **„Aktuellen Standort als Zuhause übernehmen“**.
+  Der Radius (Standard 200 m) ist der Bereich, der als „Zuhause“ zählt.
+- **Einstempeln zu Hause:** Im Reiter „Heute“ von Hand einstempeln. Die App prüft kurz den Standort
+  und markiert den Einsatz als **🏠 Homeoffice** (im Büro-Bereich als 🏢 Büro). Stimmt der Ort nicht,
+  auf das Ort-Schildchen unter der Einstempelzeit tippen und umstellen.
+- **Homeoffice wird nie automatisch ausgestempelt.** Nur Einsätze im Büro enden automatisch,
+  wenn du den Arbeitsort verlässt.
+- **Erst Homeoffice, dann ins Büro:** Kommst du während eines Homeoffice-Einsatzes im Büro an, meldet die
+  App das nur. Stemple zu Hause aus, dann startet beim nächsten Ankommen ein Büro-Einsatz.
+- **Im Reiter „Arbeitszeit“:** 🏠 kennzeichnet Homeoffice-Tage, **🔀 Büro + Homeoffice** gemischte Tage
+  (z. B. morgens Büro, abends von zu Hause). Oben steht pro Monat, wie viele Tage du im Büro, im
+  Homeoffice und gemischt gearbeitet hast, plus die Homeoffice-Stunden. Ort ändern: Zeile antippen.
+
 ### Reiter „Arbeitszeit“: Tabelle und Überstunden
 
 **Einmalig einrichten** (⚙ → „Arbeitszeit & Überstunden“, „Zuschläge“, „Feiertage“):

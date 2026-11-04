@@ -159,14 +159,20 @@ final class OvertimeTab {
             tvPlaces.setText("Arbeitsorte: noch keine Einträge");
             return;
         }
-        SpannableStringBuilder sb = new SpannableStringBuilder("Arbeitsorte:  ");
-        sb.append("🏢 " + p.office + " Büro   ");
+        //   = geschütztes Leerzeichen: "1 gemischt" wird nie auseinandergerissen
+        final String nb = " ";
+        SpannableStringBuilder sb = new SpannableStringBuilder("Arbeitstage nach Ort\n");
+        sb.setSpan(new ForegroundColorSpan(a.getColor(R.color.text_secondary)), 0, sb.length(),
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        sb.append("🏢" + nb + p.office + nb + "Büro    ");
         int st = sb.length();
-        sb.append("🏠 " + p.home + " Homeoffice");
-        sb.setSpan(new ForegroundColorSpan(a.getColor(R.color.home)), st, sb.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-        sb.setSpan(new StyleSpan(Typeface.BOLD), st, sb.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-        if (p.mixed > 0) sb.append("   🔀 " + p.mixed + " gemischt");
-        if (p.homeNet > 0) sb.append("\nIm Homeoffice gearbeitet: " + Fmt.hm(p.homeNet) + " h");
+        sb.append("🏠" + nb + p.home + nb + "Homeoffice");
+        if (p.home > 0) {
+            sb.setSpan(new ForegroundColorSpan(a.getColor(R.color.home)), st, sb.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            sb.setSpan(new StyleSpan(Typeface.BOLD), st, sb.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        }
+        if (p.mixed > 0) sb.append("    🔀" + nb + p.mixed + nb + "gemischt");
+        if (p.homeNet > 0) sb.append("\nDavon im Homeoffice gearbeitet: " + Fmt.hm(p.homeNet) + " h");
         tvPlaces.setText(sb);
     }
 
