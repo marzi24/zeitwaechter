@@ -369,16 +369,18 @@ public class MainActivity extends Activity {
             // ---- Grenze ----
             tvDeadlineLabel.setText("Spätestens raus");
             OvertimeTab.show(tvDeadline, true);
-            tvDeadline.setText(Fmt.timeSmart(t.deadline) + " Uhr");
+            tvDeadline.setText(Fmt.time(t.deadline) + " Uhr");
+            boolean otherDay = !Work.day(t.deadline).equals(LocalDate.now());
+            String dayPrefix = otherDay ? Fmt.day(t.deadline) + " · " : "";
             List<Integer> warn = Prefs.warnMinutes(this);
             int firstWarn = 0;
             for (int m : warn) firstWarn = Math.max(firstWarn, m);
             if (di.byClock) {
-                tvDeadlineNote.setText("Späteste Ausstempelzeit · 10-h-Grenze wäre " + Fmt.timeSmart(di.workDeadline));
+                tvDeadlineNote.setText(dayPrefix + "Späteste Ausstempelzeit · 10-h-Grenze wäre " + Fmt.timeSmart(di.workDeadline));
             } else if (di.earlierSessions > 0) {
-                tvDeadlineNote.setText("Vorher heute " + Fmt.duration(di.earlierNet) + " netto · Lücke zählt als Pause");
+                tvDeadlineNote.setText(dayPrefix + "Vorher heute " + Fmt.duration(di.earlierNet) + " netto · Lücke zählt als Pause");
             } else {
-                tvDeadlineNote.setText(Fmt.hoursFromMinutes(Prefs.maxWorkMin(this)) + " h + "
+                tvDeadlineNote.setText(dayPrefix + Fmt.hoursFromMinutes(Prefs.maxWorkMin(this)) + " h + "
                         + rules.pauseMin + " Min. Pause"
                         + (firstWarn > 0 ? " · Warnung " + firstWarn + " Min. vorher" : ""));
             }

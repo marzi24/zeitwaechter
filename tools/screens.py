@@ -121,6 +121,9 @@ hist = sample_history(n)
 ot_start = (n.replace(day=1) - timedelta(days=20)).replace(day=1).date().toordinal() - datetime(1970, 1, 1).toordinal()
 
 adb("shell", "cmd", "uimode", "night", "no")
+# App einmal „aufwärmen“ (erster Start im Emulator dauert länger)
+launch(0)
+time.sleep(8)
 # 1) Heute – noch im Minus
 write_prefs(prefs(hist, True, ms(n - timedelta(hours=3, minutes=11)), latest_out=-1, ot_start=ot_start))
 launch(0)
