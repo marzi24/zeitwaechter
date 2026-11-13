@@ -17,6 +17,7 @@ import android.widget.Toast;
 import java.time.DayOfWeek;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -485,19 +486,66 @@ public class MainActivity extends Activity {
             tvStatNet.setText(Fmt.hm(t.dayNet));
         }
 
-        refreshSpruch(t, active, now);
-        refreshWeek(hist, active, start, now, rules);
+        long weekDiff = refreshWeek(hist, active, start, now, rules);
+        refreshSpruch(t, active, start, now, hist, rules, weekDiff);
     }
 
     /** Motivationsspruch passend zur aktuellen Lage (abschaltbar in den Einstellungen). */
-    private void refreshSpruch(Work.Today t, boolean active, long now) {
-        Sprueche.Spruch sp = Prefs.spruecheEnabled(this)
-                ? Sprueche.pick(t, active, active && Prefs.PLACE_HOME.equals(Prefs.sessionPlace(this)), now, spruchTipps)
-                : null;
+    private void refreshSpruch(Work.Today t, boolean active, long start, long now, List<Prefs.Entry> hist,
+                               Work.Rules rules, long weekDiff) {
+        Sprueche.Spruch sp = null;
+        if (Prefs.spruecheEnabled(this)) {
+            try {
+                sp = Sprueche.pick(spruchKontext(t, active, start, now, hist, rules, weekDiff), spruchTipps);
+            } catch (RuntimeException e) {
+                sp = null; // ein Spruch darf die App nie zum Absturz bringen
+            }
+        }
         OvertimeTab.show(spruchCard, sp != null);
         if (sp == null) return;
         tvSpruchEmoji.setText(sp.emoji);
         tvSpruch.setText(sp.text);
+    }
+
+    /** Sammelt alles, was für die Spruchauswahl wichtig ist. */
+    private Sprueche.Kontext spruchKontext(Work.Today t, boolean active, long start, long now,
+                                           List<Prefs.Entry> hist, Work.Rules rules, long weekDiff) {
+        Sprueche.Kontext k = new Sprueche.Kontext();
+        k.t = t;
+        k.active = active;
+        k.now = now;
+        k.sessionStart = active ? start : 0;
+        k.earlierSessions = active && t.di != null ? t.di.earlierSessions : 0;
+        k.home = active && Prefs.PLACE_HOME.equals(Prefs.sessionPlace(this));
+        k.auto = active && "automatisch".equals(Prefs.source(this));
+        LocalDate today = Work.day(active ? start : now);
+        if (k.home) {
+            for (Prefs.Entry e : hist) {
+                if (Work.day(e.start).equals(today) && Prefs.PLACE_OFFICE.equals(e.place)) k.mixed = true;
+            }
+        }
+        k.dayType = Work.type(today, rules.state, rules.extraHolidays);
+        LocalDate tomorrow = today.plusDays(1);
+        k.tomorrowFree = Work.sollFor(tomorrow, rules) <= 0;
+        k.tomorrowHoliday = Holidays.isHoliday(tomorrow, rules.state, rules.extraHolidays);
+        k.weekKnown = weekDiff != Long.MIN_VALUE;
+        k.weekDiff = k.weekKnown ? weekDiff : 0;
+        k.latestOutMin = rules.latestOutMin;
+        k.pauseAfterMin = rules.pauseAfterMin;
+        k.weekPct = rules.week;
+        try {
+            List<Work.Month> months = Work.account(Work.days(hist, rules), Prefs.otStartDate(this),
+                    Prefs.startBalanceMin(this) * Work.MIN, Prefs.otLimitMin(this) * Work.MIN, YearMonth.now(), rules);
+            for (Work.Month m : months) {
+                if (m.ym.equals(YearMonth.now()) && m.payout > 0) {
+                    k.overLimit = true;
+                    k.payoutEuro = Work.payoutEuro(m, Prefs.hourlyRate(this), rules);
+                }
+            }
+        } catch (RuntimeException e) {
+            k.overLimit = false; // Konto nicht berechenbar (z. B. kein Startdatum) – dann eben ohne Konto-Sprüche
+        }
+        return k;
     }
 
     /** Ort der laufenden Sitzung von Hand festlegen. */
@@ -529,7 +577,8 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void refreshWeek(List<Prefs.Entry> hist, boolean active, long start, long now, Work.Rules rules) {
+    /** Wochenbalken. Gibt den Wochensaldo zurück (Long.MIN_VALUE = noch nichts gearbeitet). */
+    private long refreshWeek(List<Prefs.Entry> hist, boolean active, long start, long now, Work.Rules rules) {
         long[] net = Work.weekNet(hist, active, start, now, rules);
         LocalDate today = Work.day(now);
         LocalDate monday = today.with(DayOfWeek.MONDAY);
@@ -552,6 +601,7 @@ public class MainActivity extends Activity {
             chip(tvWeekChip, "noch nichts", R.drawable.bg_chip_primary, R.color.primary);
         }
         weekBars.set(net, today.getDayOfWeek().getValue() - 1, rules.sollMin * Work.MIN);
+        return any ? diff : Long.MIN_VALUE;
     }
 
     private void chip(TextView tv, String text, int bg, int color) {

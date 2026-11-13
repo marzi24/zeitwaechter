@@ -189,11 +189,19 @@ Genaue Anleitungen pro Modell findest du auf <https://dontkillmyapp.com>.
 
 ### Motivationssprüche
 
-Unter dem Ring steht ein kleiner Spruch, der zu deiner Lage passt: noch nicht eingestempelt, im Minus,
-kurz vor dem Soll, im Plus, kurz vor der Grenze, Feierabend, freier Tag oder Homeoffice. Viele Sprüche
-enthalten echte Zahlen, z. B. „Endspurt! Nur noch 25 Min. bis zum Soll.“
+Unter dem Ring steht ein sarkastischer Spruch, der zu deiner Lage passt (rund 160 Stück):
+- **Grundlage:** noch nicht eingestempelt, gerade angefangen, im Minus, kurz vor dem Soll, im Plus,
+  Feierabend, freier Tag, am freien Tag gearbeitet.
+- **Besondere Momente** (kommen etwa jedes zweite Mal): gerade angekommen, Mittagszeit, Pausenabzug naht,
+  Bergfest, 2. Einsatz, spät abends, sehr früh, noch nicht da nach 10 Uhr, morgen frei, Sonntagabend,
+  Samstag/Sonntag/Feiertag gearbeitet, Wochenbilanz, über 40 h auf dem Konto, Monatsende,
+  Büro + Homeoffice, Heiligabend, Silvester, Freitagnachmittag.
+- **Dazu gemischt:** Homeoffice-, Wochentags- und Jahreszeiten-Sprüche.
+- Kurz vor und nach der Grenze gibt es **nur** Grenz-Sprüche, damit die Warnung nicht untergeht.
+- Viele Sprüche enthalten echte Zahlen (Restzeit, Plus, Uhrzeit, Wochensaldo, Überstundengeld).
 - Der Spruch wechselt alle 20 Minuten von selbst. **Antippen** zeigt sofort den nächsten.
 - **Ausschalten:** ⚙ → „Grenzen & Erinnerungen“ → Schalter **„Motivationssprüche“**.
+- Alle Sprüche stehen in `Sprueche.java` und lassen sich dort leicht ändern.
 
 ### Homeoffice
 
