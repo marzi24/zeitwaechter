@@ -55,7 +55,8 @@ final class SettingsTab {
     private final Switch swEnabled;
     private final Spinner spState;
     private final Button btnStartDate, btnSaveAll;
-    private final Switch swAutoList;
+    private final Switch swAutoList, swSprueche;
+    private final TextView tvRowSprueche;
     private final TextView tvDetailTitle, tvSetupTitle, tvSetupSub;
     private final TextView tvRowHome, tvHomeStatus;
     private final EditText etHomeLat, etHomeLon, etHomeRadius;
@@ -104,6 +105,8 @@ final class SettingsTab {
         spState = a.findViewById(R.id.spState);
         btnSaveAll = a.findViewById(R.id.btnSaveAll);
         swAutoList = a.findViewById(R.id.swAutoList);
+        swSprueche = a.findViewById(R.id.swSprueche);
+        tvRowSprueche = a.findViewById(R.id.tvRowSprueche);
         tvDetailTitle = a.findViewById(R.id.tvDetailTitle);
         tvSetupTitle = a.findViewById(R.id.tvSetupTitle);
         tvSetupSub = a.findViewById(R.id.tvSetupSub);
@@ -154,6 +157,13 @@ final class SettingsTab {
         a.findViewById(R.id.rowZuschlag).setOnClickListener(v -> openDetail(R.id.secZuschlag, "Zuschläge"));
         a.findViewById(R.id.rowFeiertage).setOnClickListener(v -> openDetail(R.id.secFeiertage, "Feiertage"));
         a.findViewById(R.id.rowAuto).setOnClickListener(v -> swAutoList.toggle());
+        a.findViewById(R.id.rowSprueche).setOnClickListener(v -> swSprueche.toggle());
+        swSprueche.setOnCheckedChangeListener((b, on) -> {
+            if (on == Prefs.spruecheEnabled(a)) return;
+            Prefs.setSpruecheEnabled(a, on);
+            refreshList();
+            a.refreshAll();
+        });
         a.findViewById(R.id.btnBack).setOnClickListener(v -> closeDetail());
         swAutoList.setOnCheckedChangeListener((b, on) -> {
             if (on == Prefs.trackingEnabled(a)) return;
@@ -282,6 +292,9 @@ final class SettingsTab {
                 : "Noch kein Zuhause gespeichert. Am einfachsten zu Hause auf „Aktuellen Standort übernehmen“ tippen.");
         boolean auto = Prefs.trackingEnabled(a);
         if (swAutoList.isChecked() != auto) swAutoList.setChecked(auto);
+        boolean spr = Prefs.spruecheEnabled(a);
+        if (swSprueche.isChecked() != spr) swSprueche.setChecked(spr);
+        tvRowSprueche.setText(spr ? "An · auf „Heute“, antippen für den nächsten" : "Aus");
         tvRowAuto.setText(auto ? "Kommen & Gehen per Standort" : "Aus – nur von Hand einstempeln");
         tvRowWege.setText("Morgens +" + Prefs.offsetMin(a) + " Min · abends −" + Prefs.offsetOutMin(a) + " Min");
         int lo = Prefs.latestOutMin(a);

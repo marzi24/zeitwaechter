@@ -54,7 +54,10 @@ public class MainActivity extends Activity {
     private TextView tvDeadlineLabel, tvDeadline, tvDeadlineNote, tvStatGross, tvStatNet, tvStatDiff;
     private TextView tvStartTime, tvStartLabel, tvPlaceChip, tvAlertTitle, tvAlertText, tvWeekChip;
     private TextView btnEditStart, btnMinus, btnPlus;
-    private View setupHint, alertCard, activeBox;
+    private View setupHint, alertCard, activeBox, spruchCard;
+    private TextView tvSpruch, tvSpruchEmoji;
+    /** Wie oft auf den Spruch getippt wurde – schaltet zum nächsten weiter. */
+    private int spruchTipps = 0;
     private Button btnStart, btnEnd, btnDiscard;
     private RingView ring;
     private WeekBarsView weekBars;
@@ -96,6 +99,13 @@ public class MainActivity extends Activity {
         setupHint = findViewById(R.id.tvSetupHint);
         alertCard = findViewById(R.id.alertCard);
         activeBox = findViewById(R.id.activeBox);
+        spruchCard = findViewById(R.id.spruchCard);
+        tvSpruch = findViewById(R.id.tvSpruch);
+        tvSpruchEmoji = findViewById(R.id.tvSpruchEmoji);
+        spruchCard.setOnClickListener(v -> {
+            spruchTipps++;
+            refreshAll();
+        });
         btnStart = findViewById(R.id.btnStart);
         btnEnd = findViewById(R.id.btnEnd);
         btnDiscard = findViewById(R.id.btnDiscard);
@@ -475,7 +485,19 @@ public class MainActivity extends Activity {
             tvStatNet.setText(Fmt.hm(t.dayNet));
         }
 
+        refreshSpruch(t, active, now);
         refreshWeek(hist, active, start, now, rules);
+    }
+
+    /** Motivationsspruch passend zur aktuellen Lage (abschaltbar in den Einstellungen). */
+    private void refreshSpruch(Work.Today t, boolean active, long now) {
+        Sprueche.Spruch sp = Prefs.spruecheEnabled(this)
+                ? Sprueche.pick(t, active, active && Prefs.PLACE_HOME.equals(Prefs.sessionPlace(this)), now, spruchTipps)
+                : null;
+        OvertimeTab.show(spruchCard, sp != null);
+        if (sp == null) return;
+        tvSpruchEmoji.setText(sp.emoji);
+        tvSpruch.setText(sp.text);
     }
 
     /** Ort der laufenden Sitzung von Hand festlegen. */

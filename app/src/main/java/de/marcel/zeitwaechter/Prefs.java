@@ -215,6 +215,15 @@ public final class Prefs {
         return sp(c).getBoolean(K_ENABLED, true);
     }
 
+    /** Motivationssprüche auf dem Heute-Bildschirm anzeigen? (Standard: an) */
+    public static boolean spruecheEnabled(Context c) {
+        return sp(c).getBoolean("sprueche", true);
+    }
+
+    public static void setSpruecheEnabled(Context c, boolean on) {
+        sp(c).edit().putBoolean("sprueche", on).apply();
+    }
+
     public static void saveSettings(Context c, int radius, int offset, int maxWork, int brk,
                                     int resume, String warn, boolean enabled) {
         sp(c).edit()

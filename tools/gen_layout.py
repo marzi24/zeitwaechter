@@ -168,6 +168,16 @@ def tile(lbl, id, last=False):
         ([] if last else ['android:layout_marginEnd="8dp"']))
 
 
+spruch_card = ll([
+    tv(id='tvSpruchEmoji', extra=['android:textSize="26sp"', 'android:layout_marginEnd="12dp"']),
+    tv(id='tvSpruch', w='0dp', extra=['android:layout_weight="1"', 'android:textColor="@color/text"',
+                                      'android:textSize="14.5sp"', 'android:lineSpacingExtra="2dp"']),
+], vertical=False, id='spruchCard', extra=[
+    'android:background="@drawable/bg_spruch"', 'android:gravity="center_vertical"', 'android:padding="14dp"',
+    'android:layout_marginBottom="12dp"', 'android:clickable="true"', 'android:focusable="true"',
+    'android:contentDescription="Motivationsspruch, antippen für den nächsten"', 'android:visibility="gone"'])
+
+
 tiles = ll([tile('Anwesend', 'tvStatGross'), tile('Netto', 'tvStatNet'), tile('Heute ±', 'tvStatDiff', True)],
            vertical=False, extra=['android:layout_marginBottom="12dp"'])
 
@@ -234,7 +244,7 @@ def scroll(id, children, gone=False):
     return el('ScrollView', a, [inner])
 
 
-scroll_heute = scroll('scrollHeute', [heute_header, setup_hint, alert, hero, tiles, start_card, week_card, foot_heute])
+scroll_heute = scroll('scrollHeute', [heute_header, setup_hint, alert, hero, spruch_card, tiles, start_card, week_card, foot_heute])
 
 # =====================================================================
 # ARBEITSZEIT
@@ -357,6 +367,9 @@ def group(rows):
                           'android:paddingBottom="4dp"', 'android:layout_marginBottom="6dp"'])
 
 
+sw_sprueche = el('Switch', ['android:id="@+id/swSprueche"', 'android:layout_width="wrap_content"',
+                            'android:layout_height="wrap_content"', 'android:contentDescription="Motivationssprüche"'])
+
 sw_auto = el('Switch', ['android:id="@+id/swAutoList"', 'android:layout_width="wrap_content"',
                         'android:layout_height="wrap_content"', 'android:contentDescription="Automatisch erkennen"'])
 
@@ -386,7 +399,8 @@ settings_list = [
            srow('rowWege', 'car', 'Wege zur Stempeluhr', 'tvRowWege')]),
     tv(text='Grenzen &amp; Erinnerungen', style='GroupLabel'),
     group([srow('rowGrenzen', 'alert', 'Höchstarbeitszeit', 'tvRowGrenzen'),
-           srow('rowWarn', 'bell', 'Warnungen', 'tvRowWarn')]),
+           srow('rowWarn', 'bell', 'Warnungen', 'tvRowWarn'),
+           srow('rowSprueche', 'smile', 'Motivationssprüche', 'tvRowSprueche', right=sw_sprueche)]),
     tv(text='Arbeitszeit &amp; Geld', style='GroupLabel'),
     group([srow('rowSoll', 'coffee', 'Soll &amp; Pause', 'tvRowSoll'),
            srow('rowOt', 'euro', 'Überstunden', 'tvRowOt'),

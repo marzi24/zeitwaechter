@@ -187,6 +187,14 @@ Genaue Anleitungen pro Modell findest du auf <https://dontkillmyapp.com>.
 - **Früher ausgestempelt:** In der Benachrichtigung **„Ausgestempelt“** tippen, dann kommen keine Warnungen mehr.
 - **Dark-Modus:** Die App folgt automatisch der Handy-Einstellung (Einstellungen → Display → Dunkles Design).
 
+### Motivationssprüche
+
+Unter dem Ring steht ein kleiner Spruch, der zu deiner Lage passt: noch nicht eingestempelt, im Minus,
+kurz vor dem Soll, im Plus, kurz vor der Grenze, Feierabend, freier Tag oder Homeoffice. Viele Sprüche
+enthalten echte Zahlen, z. B. „Endspurt! Nur noch 25 Min. bis zum Soll.“
+- Der Spruch wechselt alle 20 Minuten von selbst. **Antippen** zeigt sofort den nächsten.
+- **Ausschalten:** ⚙ → „Grenzen & Erinnerungen“ → Schalter **„Motivationssprüche“**.
+
 ### Homeoffice
 
 - **Einmalig:** Zu Hause ⚙ → **„Zuhause (Homeoffice)“** → **„Aktuellen Standort als Zuhause übernehmen“**.
