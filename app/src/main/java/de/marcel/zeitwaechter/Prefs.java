@@ -65,8 +65,14 @@ public final class Prefs {
 
     private static final int MAX_HISTORY = 5000;
 
-    /** Quelle für einen freien Tag, an dem Überstunden abgebaut werden. */
+    /** Abwesenheit „Flextime“: freier Tag, an dem Überstunden abgebaut werden (Soll zählt als Minus). */
     public static final String SOURCE_FREE = "frei";
+    /** Abwesenheit „Urlaub“: Tag zählt als erfüllt, Konto bleibt gleich. */
+    public static final String SOURCE_VACATION = "urlaub";
+    /** Abwesenheit „FZA“ (Freizeitausgleich für gearbeitete Sonntage): zählt wie Urlaub als erfüllt. */
+    public static final String SOURCE_FZA = "fza";
+    /** Bei Abwesenheiten steht im Pausenfeld der Anteil: 50 = halber Tag, sonst ganzer Tag. */
+    public static final int HALF_DAY = 50;
 
     /** Arbeitsort eines Einsatzes. */
     public static final String PLACE_OFFICE = "b";
@@ -106,8 +112,36 @@ public final class Prefs {
             this.place = place == null ? PLACE_UNKNOWN : place;
         }
 
+        /** Abwesenheit (Urlaub, Flextime oder FZA) – also kein Arbeitseinsatz. */
         public boolean isFreeDay() {
+            return isFlextime() || isVacation() || isFza();
+        }
+
+        public boolean isFlextime() {
             return SOURCE_FREE.equals(source);
+        }
+
+        public boolean isVacation() {
+            return SOURCE_VACATION.equals(source);
+        }
+
+        public boolean isFza() {
+            return SOURCE_FZA.equals(source);
+        }
+
+        /** Nur bei Abwesenheiten: halber Tag? */
+        public boolean isHalfDay() {
+            return isFreeDay() && pause == HALF_DAY;
+        }
+
+        /** Anteil eines Tages: 1 = ganzer Tag, 0,5 = halber Tag. */
+        public double share() {
+            return isHalfDay() ? 0.5 : 1.0;
+        }
+
+        /** z. B. "🌴 Urlaub" oder "⏳ Flextime (½ Tag)". */
+        public String absenceLabel() {
+            return absenceName(source) + (isHalfDay() ? " (½ Tag)" : "");
         }
 
         public boolean isHome() {
@@ -125,6 +159,47 @@ public final class Prefs {
             this.time = time;
             this.minutes = minutes;
             this.note = note;
+        }
+    }
+
+    /** Anzeigename einer Abwesenheitsart mit Symbol. */
+    public static String absenceName(String source) {
+        if (SOURCE_VACATION.equals(source)) return "🌴 Urlaub";
+        if (SOURCE_FZA.equals(source)) return "🔄 FZA";
+        return "⏳ Flextime";
+    }
+
+    /** Name ohne Symbol: "Urlaub", "Flextime", "FZA". */
+    public static String absencePlain(String source) {
+        if (SOURCE_VACATION.equals(source)) return "Urlaub";
+        if (SOURCE_FZA.equals(source)) return "FZA";
+        return "Flextime";
+    }
+
+    // ---------------- Urlaub ----------------
+
+    /** Urlaubsanspruch pro Jahr in Tagen (Standard 30). */
+    public static double vacationDaysPerYear(Context c) {
+        return parseDays(sp(c).getString("vac_days", "30"), 30);
+    }
+
+    /** Resturlaub aus dem Vorjahr – gilt nur für das gespeicherte Jahr. */
+    public static double vacationCarry(Context c, int year) {
+        if (sp(c).getInt("vac_carry_year", -1) != year) return 0;
+        return parseDays(sp(c).getString("vac_carry", "0"), 0);
+    }
+
+    public static void saveVacation(Context c, double perYear, double carry, int year) {
+        sp(c).edit().putString("vac_days", String.valueOf(perYear))
+                .putString("vac_carry", String.valueOf(carry))
+                .putInt("vac_carry_year", year).apply();
+    }
+
+    private static double parseDays(String s, double def) {
+        try {
+            return Double.parseDouble(s);
+        } catch (NumberFormatException e) {
+            return def;
         }
     }
 

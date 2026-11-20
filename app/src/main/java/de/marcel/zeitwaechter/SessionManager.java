@@ -94,6 +94,15 @@ public final class SessionManager {
             }
         }
 
+        // Ganzer Tag Urlaub/Flextime/FZA eingetragen -> nicht automatisch einstempeln
+        Prefs.Entry abs = Work.absenceOn(Prefs.history(c), Work.day(whenMs));
+        if (abs != null && !abs.isHalfDay()) {
+            Notifier.showInfo(c, "Am Arbeitsort – aber heute frei",
+                    "Für heute ist " + abs.absenceLabel() + " eingetragen, deshalb wurde nicht automatisch "
+                            + "eingestempelt. Doch arbeiten? In der App von Hand einstempeln.");
+            return;
+        }
+
         long stampIn = whenMs + Prefs.offsetMin(c) * 60_000L;
         start(c, stampIn, "automatisch", Prefs.PLACE_OFFICE);
         Notifier.showArrived(c, stampIn, deadline(c, stampIn));

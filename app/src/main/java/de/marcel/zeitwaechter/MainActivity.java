@@ -465,9 +465,28 @@ public class MainActivity extends Activity {
                 btnStart.setText("Erneut einstempeln");
                 tvStatDiff.setText(Fmt.signed(t.diff));
                 tvStatDiff.setTextColor(ringColor);
+            } else if (t.absence != null && !t.absence.isHalfDay()) {
+                // ---- Ganzer Tag Urlaub / Flextime / FZA ----
+                chip(tvStatusChip, t.absence.absenceLabel(), R.drawable.bg_chip_ok, R.color.ok);
+                tvRingSmall.setText("heute");
+                tvRingBig.setText("frei");
+                tvRingUnit.setText(t.absence.isVacation() ? "Urlaub" : t.absence.isFza() ? "Freizeitausgleich" : "Flextime");
+                OvertimeTab.show(tvPlusChip, t.soll > 0);
+                if (t.absence.isFlextime()) {
+                    chip(tvPlusChip, Fmt.signed(t.diff) + " h vom Überstundenkonto", R.drawable.bg_chip_danger, R.color.danger);
+                } else {
+                    chip(tvPlusChip, "Soll erfüllt · Konto ±0", R.drawable.bg_chip_ok, R.color.ok);
+                }
+                tvDeadlineLabel.setText("Heute nicht automatisch einstempeln");
+                OvertimeTab.show(tvDeadline, false);
+                tvDeadlineNote.setText("Doch arbeiten? Von Hand einstempeln – die Zeit zählt dann zusätzlich.");
+                btnStart.setText("Trotzdem einstempeln");
+                tvStatDiff.setText(t.soll > 0 ? Fmt.signed(t.diff) : "—");
+                tvStatDiff.setTextColor(getColor(t.diff >= 0 ? R.color.ok : R.color.danger));
             } else {
                 boolean tracking = Prefs.trackingEnabled(this);
-                chip(tvStatusChip, tracking ? "Nicht eingestempelt" : "Automatische Erkennung aus",
+                chip(tvStatusChip, t.absence != null ? t.absence.absenceLabel()
+                                : tracking ? "Nicht eingestempelt" : "Automatische Erkennung aus",
                         R.drawable.bg_chip_primary, R.color.primary);
                 tvRingSmall.setText("heute");
                 tvRingBig.setText("0:00");
@@ -475,7 +494,10 @@ public class MainActivity extends Activity {
                 OvertimeTab.show(tvPlusChip, false);
                 tvDeadlineLabel.setText(tracking ? "Wartet auf Ankunft am Arbeitsort" : "Einstempeln von Hand");
                 OvertimeTab.show(tvDeadline, false);
-                tvDeadlineNote.setText(t.soll > 0
+                tvDeadlineNote.setText(t.absence != null && t.soll > 0
+                        ? "Halber Tag " + Prefs.absencePlain(t.absence.source) + " · Soll heute noch "
+                        + Fmt.hm(t.soll - t.credit) + " h"
+                        : t.soll > 0
                         ? "Soll heute " + Fmt.hm(t.soll) + " h · ab dann zählt jede Minute als Plus"
                         : "Heute keine Sollzeit – jede Stunde zählt als Überstunde");
                 btnStart.setText("Jetzt einstempeln");
@@ -528,6 +550,12 @@ public class MainActivity extends Activity {
         LocalDate tomorrow = today.plusDays(1);
         k.tomorrowFree = Work.sollFor(tomorrow, rules) <= 0;
         k.tomorrowHoliday = Holidays.isHoliday(tomorrow, rules.state, rules.extraHolidays);
+        k.absence = t.absence != null ? t.absence.source : null;
+        k.absenceHalf = t.absence != null && t.absence.isHalfDay();
+        Prefs.Entry tomorrowAbs = Work.absenceOn(hist, tomorrow);
+        k.tomorrowVacation = tomorrowAbs != null && !tomorrowAbs.isHalfDay();
+        k.vacationLeft = Prefs.vacationDaysPerYear(this) + Prefs.vacationCarry(this, today.getYear())
+                - Work.vacationDays(hist, today.getYear());
         k.weekKnown = weekDiff != Long.MIN_VALUE;
         k.weekDiff = k.weekKnown ? weekDiff : 0;
         k.latestOutMin = rules.latestOutMin;

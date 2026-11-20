@@ -247,8 +247,20 @@ Unter dem Ring steht ein sarkastischer Spruch, der zu deiner Lage passt (rund 16
 
 - **Zeile antippen** → Kommen, Gehen, Pause ändern oder Eintrag löschen.
 - **„+ Eintrag“** → vergessenen Arbeitstag nachtragen.
-- **„+ Freier Tag (Abbau)“** → Tag, an dem du Überstunden abfeierst. Zählt die Sollzeit als Minus.
-- Tage **ohne** Eintrag (frei laut Dienstplan, Urlaub, krank) zählen weder Soll noch Ist.
+- **Abwesenheiten** über „+ Eintrag“:
+  | Art | Wirkung aufs Überstundenkonto |
+  |---|---|
+  | 🌴 **Urlaub** | Tag zählt als erfüllt (±0), wird vom Resturlaub abgezogen |
+  | ⏳ **Flextime** | Sollzeit wird vom Konto abgezogen (z. B. −8 h) |
+  | 🔄 **FZA** (Freizeitausgleich für Sonntage) | Tag zählt als erfüllt (±0) |
+  - **Von–bis** geht in einem Rutsch, Wochenenden und Feiertage werden übersprungen.
+  - **Halber Tag** (nur bei einem einzelnen Tag): z. B. halber Urlaub + 4 h gearbeitet = Soll erfüllt.
+  - Ändern oder löschen: Tag in der Liste antippen. Art wechseln: auf „Art“ tippen.
+  - An einem ganzen Abwesenheitstag stempelt die App **nicht automatisch** ein, auch wenn du am Arbeitsort
+    vorbeikommst. Von Hand einstempeln geht trotzdem.
+- **Resturlaub:** ⚙ → „Urlaub“: Urlaubstage pro Jahr und Rest aus dem Vorjahr eintragen. Oben im Reiter
+  „Arbeitszeit“ steht dann „Urlaub 2026: 12 von 30 Tagen eingetragen · noch 18 übrig“.
+- Tage **ganz ohne** Eintrag (frei laut Dienstplan, krank) zählen weder Soll noch Ist.
 
 **So wird die Pause abgezogen** (wie bei deinem Arbeitgeber, einstellbar unter ⚙):
 

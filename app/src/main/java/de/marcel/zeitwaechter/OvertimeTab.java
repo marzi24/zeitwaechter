@@ -79,9 +79,12 @@ final class OvertimeTab {
         a.findViewById(R.id.btnExport).setOnClickListener(v -> exportCsv());
         a.findViewById(R.id.btnFab).setOnClickListener(v -> new AlertDialog.Builder(a)
                 .setTitle("Neuer Eintrag")
-                .setItems(new String[]{"Arbeitszeit nachtragen", "Freier Tag (Überstundenabbau)"}, (d, which) -> {
+                .setItems(new String[]{"🕒 Arbeitszeit nachtragen", "🌴 Urlaub",
+                        "⏳ Flextime (Überstunden abbauen)", "🔄 FZA (Freizeitausgleich für Sonntage)"}, (d, which) -> {
                     if (which == 0) editEntry(-1);
-                    else addFreeDay();
+                    else if (which == 1) absenceDialog(Prefs.SOURCE_VACATION, -1, null);
+                    else if (which == 2) absenceDialog(Prefs.SOURCE_FREE, -1, null);
+                    else absenceDialog(Prefs.SOURCE_FZA, -1, null);
                 })
                 .show());
     }
@@ -115,7 +118,7 @@ final class OvertimeTab {
     private void refreshSummary(List<Work.Day> days, Work.Month m, Work.Rules sur) {
         long ist = 0, soll = 0;
         for (Work.Day d : days) {
-            ist += d.net;
+            ist += d.net + d.credit; // Urlaub/FZA zählen wie gearbeitet
             soll += d.soll;
         }
         long ot = ist - soll;
@@ -143,7 +146,7 @@ final class OvertimeTab {
             // geschützte Leerzeichen: ein Eintrag bricht nicht mitten durch
             sb.append(("\u00A0" + names[i] + " " + Fmt.hm(vals[i]) + " · " + pct[i] + " %").replace(" ", "\u00A0"));
         }
-        refreshPlaces(days);
+        refreshPlaces(days, Prefs.history(a));
         if (sb.length() == 0) {
             sb.append("Noch keine Plus-Stunden in diesem Monat.");
         } else {
@@ -153,10 +156,13 @@ final class OvertimeTab {
     }
 
     /** Zusammenfassung der Arbeitsorte im Monat. */
-    private void refreshPlaces(List<Work.Day> days) {
+    private void refreshPlaces(List<Work.Day> days, List<Prefs.Entry> hist) {
         Work.PlaceStats p = Work.placeStats(days);
+        SpannableStringBuilder abs = absenceSummary(days, hist);
         if (p.office + p.home + p.mixed == 0) {
-            tvPlaces.setText("Arbeitsorte: noch keine Einträge");
+            SpannableStringBuilder sb = new SpannableStringBuilder("Arbeitsorte: noch keine Einträge");
+            sb.append(abs);
+            tvPlaces.setText(sb);
             return;
         }
         //   = geschütztes Leerzeichen: "1 gemischt" wird nie auseinandergerissen
@@ -173,7 +179,41 @@ final class OvertimeTab {
         }
         if (p.mixed > 0) sb.append("    🔀" + nb + p.mixed + nb + "gemischt");
         if (p.homeNet > 0) sb.append("\nDavon im Homeoffice gearbeitet: " + Fmt.hm(p.homeNet) + " h");
+        sb.append(abs);
         tvPlaces.setText(sb);
+    }
+
+    /** Abwesenheiten im Monat und Resturlaub im Jahr des angezeigten Monats. */
+    private SpannableStringBuilder absenceSummary(List<Work.Day> days, List<Prefs.Entry> hist) {
+        double vac = 0, flex = 0, fza = 0;
+        for (Work.Day d : days) {
+            vac += d.vacation;
+            flex += d.flextime;
+            fza += d.fza;
+        }
+        final String nb = "\u00A0";
+        SpannableStringBuilder sb = new SpannableStringBuilder("\n\n");
+        int st = sb.length();
+        sb.append("Abwesend im Monat\n");
+        sb.setSpan(new ForegroundColorSpan(a.getColor(R.color.text_secondary)), st, sb.length(),
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        if (vac + flex + fza == 0) {
+            sb.append("keine Abwesenheiten");
+        } else {
+            sb.append("🌴" + nb + Fmt.days(vac) + nb + "Urlaub    ⏳" + nb + Fmt.days(flex) + nb + "Flextime    🔄"
+                    + nb + Fmt.days(fza) + nb + "FZA");
+        }
+        int year = month.getYear();
+        double total = Prefs.vacationDaysPerYear(a) + Prefs.vacationCarry(a, year);
+        double taken = Work.vacationDays(hist, year);
+        double left = total - taken;
+        sb.append("\nUrlaub " + year + ": " + Fmt.days(taken) + " von " + Fmt.days(total) + " Tagen eingetragen · ");
+        st = sb.length();
+        sb.append("noch " + Fmt.days(left) + " übrig");
+        sb.setSpan(new ForegroundColorSpan(a.getColor(left < 0 ? R.color.danger : R.color.ok)), st, sb.length(),
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        sb.setSpan(new StyleSpan(Typeface.BOLD), st, sb.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        return sb;
     }
 
     /** Tagesliste, neueste Tage oben, gruppiert nach Kalenderwoche. */
@@ -226,12 +266,13 @@ final class OvertimeTab {
         StringBuilder times = new StringBuilder();
         long pause = 0;
         boolean manualPause = false;
-        boolean free = false;
+        StringBuilder absence = new StringBuilder();
         int sessions = 0;
         for (int idx : d.indexes) {
             Prefs.Entry e = hist.get(idx);
             if (e.isFreeDay()) {
-                free = true;
+                if (absence.length() > 0) absence.append(" + ");
+                absence.append(e.absenceLabel());
                 continue;
             }
             sessions++;
@@ -242,7 +283,11 @@ final class OvertimeTab {
             pause += Work.pauseMs(e, sur);
             manualPause |= e.pause >= 0;
         }
-        if (times.length() == 0) times.append(free ? "Frei (Überstundenabbau)" : "—");
+        if (absence.length() > 0) {
+            if (times.length() > 0) times.insert(0, absence + " · ");
+            else times.append(absence);
+        }
+        if (times.length() == 0) times.append("—");
 
         SpannableStringBuilder meta = new SpannableStringBuilder();
         Work.PlaceType pt = d.placeType();
@@ -268,7 +313,13 @@ final class OvertimeTab {
         }
         if (sessions > 1) meta.append(sessions + " Einsätze · ");
         else if (sessions == 1) meta.append("Pause " + Fmt.hm(pause) + (manualPause ? "" : "*") + " · ");
-        meta.append("Netto " + Fmt.hm(d.net));
+        if (sessions > 0) meta.append("Netto " + Fmt.hm(d.net));
+        if (d.credit > 0) {
+            if (sessions > 0) meta.append(" · ");
+            meta.append(sessions > 0 ? "+ " + Fmt.hm(d.credit) + " gutgeschrieben" : "Zählt als Soll erfüllt");
+        } else if (d.flextime > 0 && sessions == 0) {
+            meta.append(d.soll > 0 ? "Überstundenabbau" : "Kein Arbeitstag – zählt 0 h");
+        }
 
         boolean pos = d.diff >= 0;
         final Work.Day day = d;
@@ -286,7 +337,7 @@ final class OvertimeTab {
         String[] items = new String[d.indexes.size()];
         for (int k = 0; k < items.length; k++) {
             Prefs.Entry e = hist.get(d.indexes.get(k));
-            items[k] = e.isFreeDay() ? "Freier Tag (Abbau)"
+            items[k] = e.isFreeDay() ? e.absenceLabel()
                     : (e.isHome() ? "🏠 " : "🏢 ") + Fmt.time(e.start) + " – " + Fmt.time(e.end);
         }
         new AlertDialog.Builder(a)
@@ -476,7 +527,7 @@ final class OvertimeTab {
         List<Prefs.Entry> hist = Prefs.history(a);
         final Prefs.Entry e = index >= 0 && index < hist.size() ? hist.get(index) : null;
         if (e != null && e.isFreeDay()) {
-            freeDayDialog(index, e);
+            absenceDialog(e.source, index, e);
             return;
         }
 
@@ -590,7 +641,8 @@ final class OvertimeTab {
     private void confirmDelete(int index, Prefs.Entry e) {
         new AlertDialog.Builder(a)
                 .setTitle("Eintrag löschen?")
-                .setMessage(Fmt.day(e.start) + "  " + Fmt.time(e.start) + "–" + Fmt.time(e.end))
+                .setMessage(e.isFreeDay() ? Fmt.day(e.start) + "  " + e.absenceLabel()
+                        : Fmt.day(e.start) + "  " + Fmt.time(e.start) + "–" + Fmt.time(e.end))
                 .setPositiveButton("Löschen", (d, w) -> {
                     List<Prefs.Entry> list = Prefs.history(a);
                     if (index < list.size()) list.remove(index);
@@ -600,32 +652,127 @@ final class OvertimeTab {
                 .show();
     }
 
-    /** Freier Tag zum Überstundenabbau: zählt die Sollzeit als Minus. */
-    private void addFreeDay() {
-        LocalDate d0 = defaultDate();
-        new DatePickerDialog(a, (view, y, m, d) -> {
-            LocalDate date = LocalDate.of(y, m + 1, d);
-            long noon = date.atTime(12, 0).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
-            List<Prefs.Entry> list = Prefs.history(a);
-            list.add(new Prefs.Entry(noon, noon, Prefs.SOURCE_FREE, 0));
-            saveAndRefresh(list);
-            month = YearMonth.from(date);
-            refresh();
-            long soll = Work.sollFor(date, Prefs.rules(a));
-            toast(soll > 0
-                    ? "Freier Tag eingetragen: " + Fmt.signed(-soll) + " h"
-                    : "Hinweis: An Wochenenden und Feiertagen gibt es keine Sollzeit – der freie Tag zählt 0 h.");
-        }, d0.getYear(), d0.getMonthValue() - 1, d0.getDayOfMonth()).show();
-    }
+    /**
+     * Abwesenheit eintragen oder bearbeiten: Urlaub, Flextime oder FZA.
+     * Neu: Zeitraum von–bis, Wochenenden und Feiertage werden übersprungen.
+     * Halbe Tage gehen nur bei einem einzelnen Tag.
+     */
+    private void absenceDialog(String kind, int index, Prefs.Entry existing) {
+        final ZoneId zone = ZoneId.systemDefault();
+        final Work.Rules rules = Prefs.rules(a);
+        final String[] type = {kind};
+        final LocalDate[] from = {existing != null ? Work.day(existing.start) : defaultDate()};
+        final LocalDate[] to = {from[0]};
+        final boolean[] half = {existing != null && existing.isHalfDay()};
 
-    private void freeDayDialog(int index, Prefs.Entry e) {
-        new AlertDialog.Builder(a)
-                .setTitle("Freier Tag (Überstundenabbau)")
-                .setMessage(Fmt.date(e.start) + ": zählt " + Fmt.signed(-Work.sollFor(Work.day(e.start), Prefs.rules(a)))
-                        + " h auf dem Überstundenkonto.")
-                .setNeutralButton("Löschen", (d, w) -> confirmDelete(index, e))
-                .setNegativeButton("Schließen", null)
-                .show();
+        LinearLayout box = new LinearLayout(a);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(dp(20), dp(8), dp(20), 0);
+        final Button bType = plainButton();
+        final Button bFrom = plainButton();
+        final Button bTo = plainButton();
+        final Button bHalf = plainButton();
+        final TextView info = new TextView(a);
+        info.setTextColor(a.getColor(R.color.text_secondary));
+        info.setPadding(0, dp(10), 0, 0);
+
+        final Runnable update = () -> {
+            if (to[0].isBefore(from[0])) to[0] = from[0];
+            boolean single = to[0].equals(from[0]);
+            if (!single) half[0] = false;
+            bType.setText("Art:  " + Prefs.absenceName(type[0]) + "   (tippen zum Wechseln)");
+            bFrom.setText((existing != null ? "Datum:  " : "Von:  ") + Fmt.dayOf(from[0]) + " " + from[0].getYear());
+            bTo.setText("Bis:  " + Fmt.dayOf(to[0]) + " " + to[0].getYear());
+            bHalf.setText("Umfang:  " + (half[0] ? "halber Tag" : "ganzer Tag")
+                    + (single ? "   (tippen zum Wechseln)" : "   (halbe Tage nur bei einem Tag)"));
+            int n = 0;
+            long sollSum = 0;
+            for (LocalDate d = from[0]; !d.isAfter(to[0]); d = d.plusDays(1)) {
+                long soll = Work.sollFor(d, rules);
+                if (soll > 0) {
+                    n++;
+                    sollSum += soll;
+                }
+            }
+            double days = half[0] ? n * 0.5 : n;
+            long effect = Math.round(sollSum / Work.MIN * (half[0] ? 0.5 : 1.0)) * Work.MIN;
+            String txt;
+            if (n == 0) {
+                txt = "Kein Arbeitstag im Zeitraum (Wochenende/Feiertag) – hier gibt es nichts einzutragen.";
+            } else if (Prefs.SOURCE_FREE.equals(type[0])) {
+                txt = Fmt.days(days) + " Arbeitstag(e) · Überstundenkonto " + Fmt.signed(-effect) + " h";
+            } else {
+                txt = Fmt.days(days) + " Arbeitstag(e) · zählt als erfüllt, Konto ±0";
+            }
+            if (Prefs.SOURCE_VACATION.equals(type[0]) && n > 0) {
+                int year = from[0].getYear();
+                double total = Prefs.vacationDaysPerYear(a) + Prefs.vacationCarry(a, year);
+                double taken = Work.vacationDays(Prefs.history(a), year);
+                if (existing != null && existing.isVacation()) taken -= existing.share();
+                txt += "\nResturlaub " + year + " danach: " + Fmt.days(total - taken - days) + " Tage";
+            }
+            if (n > 0 && !single) txt += "\nWochenenden und Feiertage werden übersprungen.";
+            info.setText(txt);
+        };
+        update.run();
+
+        bType.setOnClickListener(v -> {
+            type[0] = Prefs.SOURCE_VACATION.equals(type[0]) ? Prefs.SOURCE_FREE
+                    : Prefs.SOURCE_FREE.equals(type[0]) ? Prefs.SOURCE_FZA : Prefs.SOURCE_VACATION;
+            update.run();
+        });
+        bFrom.setOnClickListener(v -> new DatePickerDialog(a, (view, y, m, d) -> {
+            LocalDate old = from[0];
+            from[0] = LocalDate.of(y, m + 1, d);
+            if (to[0].equals(old) || to[0].isBefore(from[0])) to[0] = from[0];
+            update.run();
+        }, from[0].getYear(), from[0].getMonthValue() - 1, from[0].getDayOfMonth()).show());
+        bTo.setOnClickListener(v -> new DatePickerDialog(a, (view, y, m, d) -> {
+            to[0] = LocalDate.of(y, m + 1, d);
+            update.run();
+        }, to[0].getYear(), to[0].getMonthValue() - 1, to[0].getDayOfMonth()).show());
+        bHalf.setOnClickListener(v -> {
+            if (to[0].equals(from[0])) half[0] = !half[0];
+            update.run();
+        });
+
+        box.addView(bType);
+        box.addView(bFrom);
+        if (existing == null) box.addView(bTo);
+        box.addView(bHalf);
+        box.addView(info);
+
+        AlertDialog.Builder b = new AlertDialog.Builder(a)
+                .setTitle(existing == null ? "Abwesenheit eintragen" : "Abwesenheit bearbeiten")
+                .setView(box)
+                .setPositiveButton("Speichern", (dlg, w) -> {
+                    List<Prefs.Entry> list = Prefs.history(a);
+                    if (existing != null && index < list.size()) list.remove(index);
+                    int added = 0;
+                    for (LocalDate d = from[0]; !d.isAfter(to[0]); d = d.plusDays(1)) {
+                        if (Work.sollFor(d, rules) <= 0) continue; // Wochenende/Feiertag überspringen
+                        final LocalDate day = d;
+                        // pro Tag nur eine Abwesenheit: alte am selben Tag ersetzen
+                        list.removeIf(x -> x.isFreeDay() && Work.day(x.start).equals(day));
+                        long noon = d.atTime(12, 0).atZone(zone).toInstant().toEpochMilli();
+                        list.add(new Prefs.Entry(noon, noon, type[0], half[0] ? Prefs.HALF_DAY : 0));
+                        added++;
+                    }
+                    if (added == 0) {
+                        toast("Kein Arbeitstag im Zeitraum – nichts eingetragen.");
+                        return;
+                    }
+                    list.sort((x, y) -> Long.compare(x.start, y.start));
+                    saveAndRefresh(list);
+                    month = YearMonth.from(from[0]);
+                    refresh();
+                    String name = Prefs.absenceName(type[0]);
+                    toast(added == 1 ? name + (half[0] ? " (½ Tag)" : "") + " eingetragen ✔"
+                            : name + ": " + added + " Tage eingetragen ✔");
+                })
+                .setNegativeButton("Abbrechen", null);
+        if (existing != null) b.setNeutralButton("Löschen", (d, w) -> confirmDelete(index, existing));
+        b.show();
     }
 
     private void saveAndRefresh(List<Prefs.Entry> list) {
@@ -666,7 +813,8 @@ final class OvertimeTab {
                         .append(last ? Fmt.hoursDecimal(d.soll) : "").append(';')
                         .append(last ? String.format(Locale.GERMANY, "%.2f", d.diff / (double) Work.HOUR) : "")
                         .append(';')
-                        .append(e.isFreeDay() ? "Überstundenabbau" : e.source).append(';')
+                        .append(e.isFreeDay() ? Prefs.absencePlain(e.source) + (e.isHalfDay() ? " (halber Tag)" : "")
+                                : e.source).append(';')
                         .append(e.isFreeDay() ? "" : e.isHome() ? "Homeoffice" : "Büro").append('\n');
             }
         }

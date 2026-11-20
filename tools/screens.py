@@ -43,7 +43,16 @@ def sample_history(today):
     i = 0
     while d < today.date():
         wd = d.weekday()
-        if wd < 5 or (wd == 5 and d.day % 14 < 7):
+        noon = ms(datetime(d.year, d.month, d.day, 12, 0, tzinfo=TZ))
+        if wd < 5 and d.day in (22, 23):  # zwei Urlaubstage im Vormonat
+            out.append({"s": noon, "e": noon, "q": "urlaub", "p": 0})
+        elif wd < 5 and d.month == today.month and d.day == 2:  # FZA am Montag
+            out.append({"s": noon, "e": noon, "q": "fza", "p": 0})
+        elif wd == 4 and d.month == today.month and d.day <= 7:  # Freitag: halber Tag Flextime + 4 h Arbeit
+            out.append({"s": noon, "e": noon, "q": "frei", "p": 50})
+            b = datetime(d.year, d.month, d.day, 7, 15, tzinfo=TZ)
+            out.append({"s": ms(b), "e": ms(b + timedelta(hours=4)), "q": "automatisch", "p": -1, "o": "b"})
+        elif wd < 5 or (wd == 5 and d.day % 14 < 7):
             k = rnd[i % len(rnd)]
             i += 1
             begin = datetime(d.year, d.month, d.day, 7, 0, tzinfo=TZ) + timedelta(minutes=30 + k)
@@ -185,6 +194,27 @@ launch(0)
 shot("7_heute_dunkel_grenze")
 launch(1)
 shot("8_arbeitszeit_dunkel")
+
+# 5b) Heute: ganzer Tag Urlaub
+adb("shell", "cmd", "uimode", "night", "no")
+time.sleep(2)
+noon_today = ms(n.replace(hour=12, minute=0))
+write_prefs(prefs(hist + [{"s": noon_today, "e": noon_today, "q": "urlaub", "p": 0}], False, ot_start=ot_start))
+launch(0)
+shot("10_heute_urlaub")
+launch(2)
+adb("shell", "input", "keyevent", "4")
+time.sleep(1)
+launch(2)
+swipe_up(1)
+if tap_text("Urlaub"):
+    shot("11_einstellungen_urlaub")
+launch(1)
+if tap_text("Eintrag"):
+    if tap_text("🌴 Urlaub"):
+        shot("12_urlaub_eintragen")
+    adb("shell", "input", "keyevent", "4")
+    time.sleep(1)
 
 # 6) Nicht eingestempelt (hell)
 adb("shell", "cmd", "uimode", "night", "no")

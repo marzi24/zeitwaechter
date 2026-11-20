@@ -404,6 +404,7 @@ settings_list = [
     tv(text='Arbeitszeit &amp; Geld', style='GroupLabel'),
     group([srow('rowSoll', 'coffee', 'Soll &amp; Pause', 'tvRowSoll'),
            srow('rowOt', 'euro', 'Überstunden', 'tvRowOt'),
+           srow('rowUrlaub', 'sun', 'Urlaub', 'tvRowUrlaub'),
            srow('rowZuschlag', 'percent', 'Zuschläge', 'tvRowZuschlag'),
            srow('rowFeiertage', 'cal', 'Feiertage', 'tvRowFeiertage')]),
     tv(id='tvVersion', w='match_parent', extra=['android:gravity="center"', 'android:textColor="@color/text_secondary"',
@@ -527,6 +528,15 @@ sec_feiertage = section([
     hint('', id='tvHolidayList'),
 ], id='secFeiertage', extra=['android:visibility="gone"'])
 
+sec_urlaub = section([
+    lfield('Urlaubstage pro Jahr', 'etVacDays', 'numberDecimal', 'z. B. 30'),
+    lfield('Resturlaub aus dem Vorjahr (Tage)', 'etVacCarry', 'numberDecimal', '0'),
+    hint('', id='tvVacHint'),
+    hint('Urlaub, Flextime und FZA trägst du im Reiter „Arbeitszeit“ über „+ Eintrag“ ein – auch mehrere Tage am '
+         'Stück und halbe Tage. Wochenenden und Feiertage werden dabei automatisch übersprungen.'),
+    hint('Urlaub und FZA zählen als erfüllter Tag (Konto ±0). Flextime nimmt die Sollzeit vom Überstundenkonto.'),
+], id='secUrlaub', extra=['android:visibility="gone"'])
+
 detail_header = ll([
     round_btn('btnBack', 'back', 'Zurück'),
     tv(id='tvDetailTitle', extra=['android:textColor="@color/text"', 'android:textSize="22sp"', 'android:textStyle="bold"',
@@ -534,7 +544,7 @@ detail_header = ll([
 ], vertical=False, extra=['android:gravity="center_vertical"', 'android:paddingTop="10dp"', 'android:paddingBottom="14dp"'])
 
 scroll_detail = scroll('scrollDetail', [detail_header, sec_setup, sec_ort, sec_home, sec_erkennung, sec_grenzen, sec_soll, sec_ot,
-                                        sec_zuschlag, sec_feiertage,
+                                        sec_zuschlag, sec_feiertage, sec_urlaub,
                                         btn('btnSaveAll', 'Speichern', 'BtnFilled', extra=['android:layout_marginTop="4dp"',
                                                                                            'android:layout_marginBottom="28dp"'])],
                        gone=True)

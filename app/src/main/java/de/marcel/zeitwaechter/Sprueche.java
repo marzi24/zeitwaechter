@@ -50,6 +50,13 @@ final class Sprueche {
         boolean overLimit;
         double payoutEuro;
         int latestOutMin = -1;
+        /** Abwesenheit heute (Prefs.SOURCE_…) oder null. */
+        String absence;
+        boolean absenceHalf;
+        /** Morgen ganztägig Urlaub/Flextime/FZA. */
+        boolean tomorrowVacation;
+        /** Resturlaub im laufenden Jahr (Tage). */
+        double vacationLeft = Double.NaN;
         int pauseAfterMin = 360;
         /** Zuschlag Mo–Fr in Prozent. */
         int weekPct = 25;
@@ -59,7 +66,7 @@ final class Sprueche {
     /** Grundlage. */
     enum Lage {
         NOCH_NICHT_DA, FREIER_TAG, START, MINUS, KNAPP, PLUS, FREI_GEARBEITET,
-        GRENZE_NAH, GRENZE_UEBER, FEIERABEND_PLUS, FEIERABEND_MINUS
+        GRENZE_NAH, GRENZE_UEBER, FEIERABEND_PLUS, FEIERABEND_MINUS, URLAUB, FLEXTIME, FZA
     }
 
     /** Ein Spruch: Emoji links, Text rechts. */
@@ -208,6 +215,29 @@ final class Sprueche {
             {"🎲", "Heute Minus, morgen Plus. Oder auch nicht. Wer weiß das schon."},
     };
 
+    static final String[][] URLAUB = {
+            {"🌴", "Urlaub! Die Firma läuft auch ohne dich. Das ist das eigentlich Beunruhigende."},
+            {"📵", "Urlaub. Wer jetzt Mails checkt, hat verloren."},
+            {"🏖️", "Endlich Urlaub. Gleich ist er vorbei und du fragst dich, wo die Tage hin sind."},
+            {"😌", "Heute gilt das Soll als erfüllt, ohne dass du was tust. So sollte es immer sein."},
+            {"🧳", "Noch {resturlaub} Urlaubstage übrig. Teil sie dir gut ein, der Dezember kommt bestimmt."},
+            {"🙈", "Urlaub. Falls jemand anruft: Du bist in einem Funkloch. Auf dem Sofa."},
+    };
+
+    static final String[][] FLEXTIME = {
+            {"⏳", "Flextime. Du feierst Überstunden ab, die du vorher verschenkt hast. Nullsummenspiel deluxe."},
+            {"🛋️", "Heute bezahlst du dich selbst mit deinen eigenen Überstunden. Großzügig."},
+            {"📉", "Überstundenkonto minus {rest}. Hat sich trotzdem gelohnt."},
+            {"😎", "Freier Tag auf eigene Rechnung. Fühlt sich trotzdem wie Urlaub an."},
+    };
+
+    static final String[][] FZA = {
+            {"🔄", "FZA: Der Sonntag kommt zurück. Mit Verspätung, aber immerhin."},
+            {"⛪", "Freizeitausgleich. Der Sonntag schuldet dir noch was, heute zahlt er."},
+            {"😴", "Pflicht-Freizeit. Endlich mal eine Pflicht, die Spaß macht."},
+            {"🧾", "FZA. Sozusagen die Quittung für deinen Sonntag in der Arbeit."},
+    };
+
     /** Kommen beim Arbeiten im Homeoffice zur Grundliste dazu. */
     static final String[][] HOMEOFFICE = {
             {"🩳", "Homeoffice: obenrum Business, untenrum Jogginghose."},
@@ -335,6 +365,11 @@ final class Sprueche {
 
     /** Welche Grundlage gerade gilt. */
     static Lage lage(Work.Today t, boolean active) {
+        if (!active && !t.hasWork && t.absence != null && !t.absence.isHalfDay()) {
+            if (t.absence.isVacation()) return Lage.URLAUB;
+            if (t.absence.isFza()) return Lage.FZA;
+            return Lage.FLEXTIME;
+        }
         if (active) {
             if (t.left <= 0) return Lage.GRENZE_UEBER;
             if (t.left <= 60 * Work.MIN) return Lage.GRENZE_NAH;
@@ -370,6 +405,12 @@ final class Sprueche {
                 return GRENZE_UEBER;
             case FEIERABEND_PLUS:
                 return FEIERABEND_PLUS;
+            case URLAUB:
+                return URLAUB;
+            case FLEXTIME:
+                return FLEXTIME;
+            case FZA:
+                return FZA;
             default:
                 return FEIERABEND_MINUS;
         }
@@ -415,7 +456,7 @@ final class Sprueche {
                 add(l, "☕", "Montagmorgen. Kaffee ist keine Option, sondern Pflicht.");
             }
         }
-        if (monat == 12 && jetzt.getDayOfMonth() < 24 && lage != Lage.FREIER_TAG) {
+        if (monat == 12 && jetzt.getDayOfMonth() < 24 && (arbeitet || lage == Lage.NOCH_NICHT_DA)) {
             add(l, "🎄", "Bald Weihnachten. Durchhalten, dann darfst du dich bei der Familie erholen. Haha.");
         }
         if ((monat >= 11 || monat <= 2) && (arbeitet || lage == Lage.FEIERABEND_PLUS
@@ -467,6 +508,16 @@ final class Sprueche {
                 if (k.dayType == Work.DayType.FEIERTAG) add(l, FEIERTAG);
             }
             if (k.home && k.mixed) add(l, GEMISCHT);
+            if (k.absenceHalf && Prefs.SOURCE_VACATION.equals(k.absence)) {
+                add(l, "🌗", "Halber Tag Urlaub. Die andere Hälfte gehört leider der Firma.");
+                add(l, "⏱️", "Nur ein halber Tag. Noch {rest} – dann ist wieder Urlaub.");
+            } else if (k.absenceHalf) {
+                add(l, "🌗", "Halber Tag frei. Die Hälfte vom Elend, immerhin.");
+            }
+            if (k.tomorrowVacation) {
+                add(l, "🎒", "Morgen frei. Heute nur noch so tun, als ob.");
+                add(l, "✈️", "Letzter Tag vor dem Urlaub. Jetzt bloß keine neuen Aufgaben annehmen.");
+            }
             if (wt == DayOfWeek.FRIDAY && stunde >= 14 && t.soll > 0) {
                 add(l, "🧨", "Freitagnachmittag in der Arbeit. Alle anderen sind schon weg. Du bist das letzte Licht.");
             }
@@ -505,6 +556,7 @@ final class Sprueche {
         if (text.contains("{latest}") && k.latestOutMin < 0) return false;
         if (text.contains("{auszahlung}") && k.payoutEuro < 1) return false;
         if (text.contains("{grenze}") && t.left <= 0) return false;
+        if (text.contains("{resturlaub}") && (Double.isNaN(k.vacationLeft) || k.vacationLeft <= 0)) return false;
         return true;
     }
 
@@ -560,7 +612,7 @@ final class Sprueche {
                 .replace("{netto}", dauer(t.dayNet))
                 .replace("{grenze}", dauer(t.left))
                 .replace("{um}", t.plusAt > 0 ? Fmt.time(t.plusAt) : "")
-                .replace("{soll}", Fmt.hm(t.soll))
+                .replace("{soll}", Fmt.hm(t.soll - t.credit))
                 .replace("{prozent}", String.valueOf(t.soll > 0 ? Math.round(t.dayNet * 100.0 / t.soll) : 0))
                 .replace("{bisPause}", dauer(k.pauseAfterMin * Work.MIN - t.sessionGross))
                 .replace("{einsatz}", String.valueOf(k.earlierSessions + 1))
@@ -568,6 +620,7 @@ final class Sprueche {
                         ? String.format(Locale.GERMANY, "%02d:%02d", k.latestOutMin / 60, k.latestOutMin % 60) : "")
                 .replace("{woche}", Fmt.signed(k.weekDiff) + " h")
                 .replace("{auszahlung}", String.format(Locale.GERMANY, "%,.0f €", k.payoutEuro))
+                .replace("{resturlaub}", Double.isNaN(k.vacationLeft) ? "" : Fmt.days(k.vacationLeft))
                 .replace("{zuschlag}", String.valueOf(k.weekPct))
                 .replace("{wochentag}", WOCHENTAGE[jetzt.getDayOfWeek().getValue() - 1]);
         // "… noch 30 Min.." → ein Punkt reicht; "noch 30 Min. Jetzt" bleibt

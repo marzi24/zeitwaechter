@@ -81,6 +81,38 @@ final class Work {
         return grossMs(e) - pauseMs(e, r);
     }
 
+    /**
+     * Gutschrift einer Abwesenheit: Urlaub und FZA zählen die (halbe) Sollzeit des Tages als erfüllt,
+     * Flextime bekommt nichts gutgeschrieben (dort wird das Soll aus dem Überstundenkonto genommen).
+     */
+    static long creditMs(Prefs.Entry e, Rules r) {
+        if (!e.isVacation() && !e.isFza()) return 0;
+        long sollMin = sollFor(day(e.start), r) / MIN;
+        return Math.round(sollMin * e.share()) * MIN;
+    }
+
+    /** Zählt für Plus/Minus: Netto plus Gutschrift. */
+    static long countedMs(Prefs.Entry e, Rules r) {
+        return netMs(e, r) + creditMs(e, r);
+    }
+
+    /** Erste Abwesenheit an einem Datum (oder null). */
+    static Prefs.Entry absenceOn(List<Prefs.Entry> hist, LocalDate d) {
+        for (Prefs.Entry e : hist) {
+            if (e.isFreeDay() && day(e.start).equals(d)) return e;
+        }
+        return null;
+    }
+
+    /** Urlaubstage (halbe Tage zählen 0,5), die in einem Kalenderjahr eingetragen sind. */
+    static double vacationDays(List<Prefs.Entry> hist, int year) {
+        double sum = 0;
+        for (Prefs.Entry e : hist) {
+            if (e.isVacation() && day(e.start).getYear() == year) sum += e.share();
+        }
+        return sum;
+    }
+
     static LocalDate day(long ms) {
         return Fmt.zoned(ms).toLocalDate();
     }
@@ -192,6 +224,12 @@ final class Work {
         long homeNet;
         boolean hasHome;
         boolean hasOffice;
+        /** Gutschrift durch Urlaub/FZA (zählt wie gearbeitet). */
+        long credit;
+        /** Abwesenheiten an diesem Tag in Tagen (0,5 = halber Tag). */
+        double vacation, fza, flextime;
+        /** Gab es echte Arbeitseinsätze? */
+        boolean hasWork;
 
         Day(LocalDate date) {
             this.date = date;
@@ -246,8 +284,9 @@ final class Work {
     /**
      * Fasst den Verlauf zu Tagen zusammen (nach dem Datum des Beginns).
      * An Werktagen (Mo–Fr, kein Feiertag) mit mindestens einem Eintrag gilt die Sollzeit,
-     * auch an einem „freien Tag“ (Überstundenabbau), der dann 0 Ist-Stunden hat.
-     * Tage ohne Eintrag (frei, Urlaub, krank) zählen weder Soll noch Ist.
+     * auch an Abwesenheitstagen: Flextime hat 0 Ist-Stunden (= Minus),
+     * Urlaub und FZA bekommen das Soll gutgeschrieben (= ±0).
+     * Tage ohne Eintrag (frei, krank) zählen weder Soll noch Ist.
      */
     static List<Day> days(List<Prefs.Entry> hist, Rules r) {
         List<Day> out = new ArrayList<>();
@@ -264,7 +303,12 @@ final class Work {
             long n = netMs(e, r);
             cur.net += n;
             cur.pause += pauseMs(e, r);
+            cur.credit += creditMs(e, r);
+            if (e.isVacation()) cur.vacation += e.share();
+            if (e.isFza()) cur.fza += e.share();
+            if (e.isFlextime()) cur.flextime += e.share();
             if (!e.isFreeDay()) {
+                cur.hasWork = true;
                 if (e.isHome()) {
                     cur.hasHome = true;
                     cur.homeNet += n;
@@ -273,7 +317,7 @@ final class Work {
                 }
             }
         }
-        for (Day d : out) d.diff = d.net - d.soll;
+        for (Day d : out) d.diff = d.net + d.credit - d.soll;
         return out;
     }
 
@@ -452,6 +496,10 @@ final class Work {
         long diff;
         /** Gibt es heute überhaupt schon Arbeitszeit? */
         boolean hasWork;
+        /** Gutschrift durch Urlaub/FZA heute. */
+        long credit;
+        /** Abwesenheit heute (Urlaub/Flextime/FZA) oder null. */
+        Prefs.Entry absence;
         long deadline;
         long left;
         /** 0..1 Füllung des Rings. */
@@ -479,6 +527,11 @@ final class Work {
         boolean entriesToday = false;
         for (Prefs.Entry e : hist) {
             if (day(e.start).equals(date)) {
+                if (e.isFreeDay()) {
+                    t.credit += creditMs(e, r);
+                    if (t.absence == null) t.absence = e;
+                    continue;
+                }
                 earlierSameDay += netMs(e, r);
                 entriesToday = true;
             }
@@ -489,13 +542,13 @@ final class Work {
             t.di = dayInfo(hist, start, maxWorkMin, r);
             t.sessionGross = Math.max(0, toMinute(now) - toMinute(start));
             t.dayNet = earlierSameDay + netForGross(t.sessionGross, r);
-            t.diff = t.dayNet - t.soll;
+            t.diff = t.dayNet + t.credit - t.soll;
             t.hasWork = true;
             t.deadline = t.di.deadline;
             t.left = t.deadline - now;
             long span = Math.max(MIN, t.deadline - start);
             t.progress = (float) Math.max(0, Math.min(1, (now - start) / (double) span));
-            long needNet = t.soll - earlierSameDay;
+            long needNet = t.soll - t.credit - earlierSameDay;
             if (needNet > 0) {
                 long at = start + grossForNet(needNet, r);
                 if (at <= t.deadline) {
@@ -506,11 +559,12 @@ final class Work {
         } else {
             t.di = dayInfo(hist, now, maxWorkMin, r);
             t.dayNet = earlierSameDay;
-            t.diff = t.dayNet - t.soll;
+            t.diff = t.dayNet + t.credit - t.soll;
             t.hasWork = entriesToday;
             long max = Math.max(MIN, maxWorkMin * MIN);
             t.progress = (float) Math.min(1, t.dayNet / (double) max);
-            if (t.soll > 0 && t.soll < max) t.marker = (float) (t.soll / (double) max);
+            long need = t.soll - t.credit; // halber Urlaubstag: nur noch die halbe Sollzeit
+            if (need > 0 && need < max) t.marker = (float) (need / (double) max);
             t.deadline = t.di.deadline;
             t.left = t.deadline - now;
         }
@@ -523,7 +577,7 @@ final class Work {
         LocalDate monday = day(now).with(java.time.DayOfWeek.MONDAY);
         for (Prefs.Entry e : hist) {
             long idx = day(e.start).toEpochDay() - monday.toEpochDay();
-            if (idx >= 0 && idx < 7) out[(int) idx] += netMs(e, r);
+            if (idx >= 0 && idx < 7) out[(int) idx] += countedMs(e, r); // Urlaub/FZA zählen wie gearbeitet
         }
         if (active) {
             long idx = day(start).toEpochDay() - monday.toEpochDay();

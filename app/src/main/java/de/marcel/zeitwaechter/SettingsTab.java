@@ -50,7 +50,8 @@ final class SettingsTab {
 
     private final TextView tvPerms, tvGeofence, tvHolidayList, tvVersion, tvPauseExample;
     private final EditText etLat, etLon, etRadius, etOffset, etOffsetOut, etMaxHours, etLatestOut, etBreak, etWarn, etResume;
-    private final EditText etSoll, etPauseAfter, etStartBal, etLimit, etRate;
+    private final EditText etSoll, etPauseAfter, etStartBal, etLimit, etRate, etVacDays, etVacCarry;
+    private final TextView tvVacHint, tvRowUrlaub;
     private final EditText etSurWeek, etSurSatLow, etSatLowHours, etSurSatHigh, etSurSun, etSurHol, etExtraHol;
     private final Switch swEnabled;
     private final Spinner spState;
@@ -91,6 +92,10 @@ final class SettingsTab {
         etSoll = a.findViewById(R.id.etSoll);
         etPauseAfter = a.findViewById(R.id.etPauseAfter);
         etStartBal = a.findViewById(R.id.etStartBal);
+        etVacDays = a.findViewById(R.id.etVacDays);
+        etVacCarry = a.findViewById(R.id.etVacCarry);
+        tvVacHint = a.findViewById(R.id.tvVacHint);
+        tvRowUrlaub = a.findViewById(R.id.tvRowUrlaub);
         etLimit = a.findViewById(R.id.etLimit);
         etRate = a.findViewById(R.id.etRate);
         btnStartDate = a.findViewById(R.id.btnStartDate);
@@ -130,7 +135,7 @@ final class SettingsTab {
                 a.findViewById(R.id.secSetup), a.findViewById(R.id.secOrt), a.findViewById(R.id.secHome),
                 a.findViewById(R.id.secErkennung),
                 a.findViewById(R.id.secGrenzen), a.findViewById(R.id.secSoll), a.findViewById(R.id.secOt),
-                a.findViewById(R.id.secZuschlag), a.findViewById(R.id.secFeiertage)};
+                a.findViewById(R.id.secZuschlag), a.findViewById(R.id.secFeiertage), a.findViewById(R.id.secUrlaub)};
 
         // ---- Liste: Zeilen öffnen Detailseiten ----
         a.findViewById(R.id.rowSetup).setOnClickListener(v -> openSetup());
@@ -156,6 +161,7 @@ final class SettingsTab {
         a.findViewById(R.id.rowOt).setOnClickListener(v -> openDetail(R.id.secOt, "Überstunden"));
         a.findViewById(R.id.rowZuschlag).setOnClickListener(v -> openDetail(R.id.secZuschlag, "Zuschläge"));
         a.findViewById(R.id.rowFeiertage).setOnClickListener(v -> openDetail(R.id.secFeiertage, "Feiertage"));
+        a.findViewById(R.id.rowUrlaub).setOnClickListener(v -> openDetail(R.id.secUrlaub, "Urlaub"));
         a.findViewById(R.id.rowAuto).setOnClickListener(v -> swAutoList.toggle());
         a.findViewById(R.id.rowSprueche).setOnClickListener(v -> swSprueche.toggle());
         swSprueche.setOnCheckedChangeListener((b, on) -> {
@@ -310,6 +316,10 @@ final class SettingsTab {
         tvRowOt.setText("Auszahlung ab " + Fmt.hoursFromMinutes(Prefs.otLimitMin(a)) + " h · "
                 + (Prefs.hourlyRate(a) > 0 ? Fmt.euro(Prefs.hourlyRate(a)) + "/h" : "Stundenlohn fehlt"));
         tvRowZuschlag.setText(r.week + " · " + r.satLow + "/" + r.satHigh + " · " + r.sun + " · " + r.hol + " %");
+        int year = LocalDate.now().getYear();
+        double vacTotal = Prefs.vacationDaysPerYear(a) + Prefs.vacationCarry(a, year);
+        double vacTaken = Work.vacationDays(Prefs.history(a), year);
+        tvRowUrlaub.setText(Fmt.days(vacTotal) + " Tage " + year + " · noch " + Fmt.days(vacTotal - vacTaken) + " übrig");
         tvRowFeiertage.setText(Holidays.STATE_NAMES[Holidays.stateIndex(r.state)]
                 + (r.extraHolidays.isEmpty() ? "" : " + " + r.extraHolidays));
     }
@@ -476,6 +486,13 @@ final class SettingsTab {
         etPauseAfter.setText(Fmt.hoursInput(Prefs.pauseAfterMin(a)));
         showPauseExample(Prefs.rules(a));
         etStartBal.setText(Fmt.hoursInput(Prefs.startBalanceMin(a)));
+        int year = LocalDate.now().getYear();
+        etVacDays.setText(Fmt.days(Prefs.vacationDaysPerYear(a)));
+        etVacCarry.setText(Fmt.days(Prefs.vacationCarry(a, year)));
+        double taken = Work.vacationDays(Prefs.history(a), year);
+        double total = Prefs.vacationDaysPerYear(a) + Prefs.vacationCarry(a, year);
+        tvVacHint.setText("Der Resturlaub gilt für " + year + ". Stand " + year + ": " + Fmt.days(total)
+                + " Tage insgesamt, " + Fmt.days(taken) + " eingetragen, " + Fmt.days(total - taken) + " übrig.");
         startDate = Prefs.otStartDate(a);
         updateStartDateButton();
         etLimit.setText(Fmt.hoursInput(Prefs.otLimitMin(a)));
@@ -519,6 +536,16 @@ final class SettingsTab {
             String rateTxt = etRate.getText().toString().trim();
             double rate = rateTxt.isEmpty() ? 0 : parseDouble(rateTxt, "Stundenlohn");
             if (rate < 0 || rate > 1000) throw new IllegalArgumentException("Stundenlohn: 0 bis 1000 €.");
+            String vd = etVacDays.getText().toString().trim();
+            String vc = etVacCarry.getText().toString().trim();
+            double vacDays = vd.isEmpty() ? 0 : parseDouble(vd, "Urlaubstage pro Jahr");
+            double vacCarry = vc.isEmpty() ? 0 : parseDouble(vc, "Resturlaub aus dem Vorjahr");
+            if (vacDays < 0 || vacDays > 100) throw new IllegalArgumentException("Urlaubstage: 0 bis 100.");
+            if (vacCarry < 0 || vacCarry > 100) throw new IllegalArgumentException("Resturlaub: 0 bis 100 Tage.");
+            if (Math.abs(vacDays * 2 - Math.round(vacDays * 2)) > 1e-9
+                    || Math.abs(vacCarry * 2 - Math.round(vacCarry * 2)) > 1e-9) {
+                throw new IllegalArgumentException("Urlaub: nur ganze oder halbe Tage (z. B. 30 oder 2,5).");
+            }
 
             // Zuschläge & Feiertage
             Work.Rules s = new Work.Rules();
@@ -543,6 +570,7 @@ final class SettingsTab {
             else Prefs.clearWorkLocation(a);
             Prefs.saveOvertimeSettings(a, soll, pauseAfter, startBal, startDate, limit, rate);
             Prefs.saveRules(a, s);
+            Prefs.saveVacation(a, vacDays, vacCarry, LocalDate.now().getYear());
         } catch (IllegalArgumentException e) {
             toast(e.getMessage());
             return;

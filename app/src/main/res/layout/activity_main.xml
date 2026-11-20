@@ -1492,6 +1492,70 @@
                         android:layout_marginStart="68dp"
                         android:background="@color/line" />
                     <LinearLayout
+                        android:id="@+id/rowUrlaub"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:paddingStart="16dp"
+                        android:paddingEnd="14dp"
+                        android:paddingTop="12dp"
+                        android:paddingBottom="12dp"
+                        android:background="?android:attr/selectableItemBackground"
+                        android:clickable="true"
+                        android:focusable="true">
+
+                        <FrameLayout
+                            android:layout_width="40dp"
+                            android:layout_height="40dp"
+                            android:background="@drawable/bg_icon_soft">
+
+                            <ImageView
+                                android:layout_width="22dp"
+                                android:layout_height="22dp"
+                                android:src="@drawable/ic_sun"
+                                android:tint="@color/primary"
+                                android:importantForAccessibility="no"
+                                android:layout_gravity="center" />
+                        </FrameLayout>
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:layout_weight="1"
+                            android:layout_marginStart="14dp">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Urlaub"
+                                android:textColor="@color/text"
+                                android:textSize="15.5sp"
+                                android:textStyle="bold" />
+                            <TextView
+                                android:id="@+id/tvRowUrlaub"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:textColor="@color/text_secondary"
+                                android:textSize="13sp"
+                                android:layout_marginTop="1dp" />
+                        </LinearLayout>
+
+                        <ImageView
+                            android:layout_width="20dp"
+                            android:layout_height="20dp"
+                            android:src="@drawable/ic_chevron"
+                            android:tint="@color/text_secondary"
+                            android:importantForAccessibility="no" />
+                    </LinearLayout>
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:layout_marginStart="68dp"
+                        android:background="@color/line" />
+                    <LinearLayout
                         android:id="@+id/rowZuschlag"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
@@ -2262,6 +2326,49 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/secUrlaub"
+                    style="@style/Section"
+                    android:visibility="gone">
+
+                    <TextView
+                        style="@style/Label"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Urlaubstage pro Jahr" />
+                    <EditText
+                        android:id="@+id/etVacDays"
+                        style="@style/Field"
+                        android:inputType="numberDecimal"
+                        android:hint="z. B. 30" />
+                    <TextView
+                        style="@style/Label"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Resturlaub aus dem Vorjahr (Tage)" />
+                    <EditText
+                        android:id="@+id/etVacCarry"
+                        style="@style/Field"
+                        android:inputType="numberDecimal"
+                        android:hint="0" />
+                    <TextView
+                        android:id="@+id/tvVacHint"
+                        style="@style/Hint"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="" />
+                    <TextView
+                        style="@style/Hint"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Urlaub, Flextime und FZA trägst du im Reiter „Arbeitszeit“ über „+ Eintrag“ ein – auch mehrere Tage am Stück und halbe Tage. Wochenenden und Feiertage werden dabei automatisch übersprungen." />
+                    <TextView
+                        style="@style/Hint"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Urlaub und FZA zählen als erfüllter Tag (Konto ±0). Flextime nimmt die Sollzeit vom Überstundenkonto." />
                 </LinearLayout>
 
                 <Button

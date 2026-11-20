@@ -87,6 +87,12 @@ final class Fmt {
     }
 
     /** Minuten als Dezimalstunden zum Eintippen, z. B. 462 -> "7,7", -90 -> "-1,5". */
+    /** Tage mit höchstens einer Nachkommastelle, z. B. "12" oder "12,5". */
+    static String days(double d) {
+        String s = String.format(Locale.GERMANY, "%.1f", d);
+        return s.endsWith(",0") ? s.substring(0, s.length() - 2) : s;
+    }
+
     static String hoursInput(int minutes) {
         String s = String.format(Locale.GERMANY, "%.2f", minutes / 60.0);
         while (s.endsWith("0")) s = s.substring(0, s.length() - 1);
