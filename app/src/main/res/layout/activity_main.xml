@@ -784,7 +784,7 @@
                     style="@style/Hint"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Sollzeit gilt an Tagen Mo–Fr mit Eintrag. Tage ohne Eintrag (frei, Urlaub, krank) zählen nicht. Beträge sind Schätzungen brutto vor Steuern und Abgaben."
+                    android:text="Sollzeit gilt an Tagen Mo–Fr mit Eintrag. Urlaub und FZA zählen als erfüllt, Flextime als Minus. Tage ganz ohne Eintrag (frei, krank) zählen nicht. Beträge sind Schätzungen brutto vor Steuern und Abgaben."
                     android:textSize="12sp"
                     android:paddingStart="4dp"
                     android:layout_marginBottom="96dp" />

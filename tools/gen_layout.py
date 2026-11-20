@@ -317,7 +317,7 @@ payout_card = ll([
     ], vertical=False, id='payoutPills', extra=['android:layout_marginTop="12dp"']),
 ], extra=['android:background="@drawable/payout_card"', 'android:padding="20dp"', 'android:layout_marginBottom="12dp"'])
 
-foot_zeit = tv(text='Sollzeit gilt an Tagen Mo–Fr mit Eintrag. Tage ohne Eintrag (frei, Urlaub, krank) zählen nicht. '
+foot_zeit = tv(text='Sollzeit gilt an Tagen Mo–Fr mit Eintrag. Urlaub und FZA zählen als erfüllt, Flextime als Minus. Tage ganz ohne Eintrag (frei, krank) zählen nicht. '
                     'Beträge sind Schätzungen brutto vor Steuern und Abgaben.', style='Hint',
                extra=['android:textSize="12sp"', 'android:paddingStart="4dp"', 'android:layout_marginBottom="96dp"'])
 
